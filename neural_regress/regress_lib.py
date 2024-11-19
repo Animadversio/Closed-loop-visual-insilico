@@ -186,6 +186,10 @@ def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True):
                                    param_grid=dict(alpha=[1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100, 1000, 1E4, 1E5], ),
                                    ).fit(X_train, y_train)
                 alpha = clf.best_params_["alpha"]
+            elif isinstance(estim, RidgeCV):
+                clf = estim.fit(X_train, y_train)
+                clf = deepcopy(clf)
+                alpha = estim.alpha_
             else:
                 clf = estim.fit(X_train, y_train)
                 clf = deepcopy(clf)
