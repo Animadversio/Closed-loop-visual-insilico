@@ -35,14 +35,19 @@ class PCA_torch(torch.nn.Module):
         super(PCA_torch, self).__init__()
         self.n_features = pca.n_features_in_
         self.n_components = pca.n_components
-        self.mean = torch.from_numpy(pca.mean_).to(device)  # (n_features,)
-        self.components = torch.from_numpy(pca.components_).to(device)  # (n_components, n_features)
+        self.mean = torch.from_numpy(pca.mean_).float().to(device)  # (n_features,)
+        self.components = torch.from_numpy(pca.components_).float().to(device)  # (n_components, n_features)
 
     def forward(self, X):
         if X.ndim > 2:
             X = X.flatten(start_dim=1)
         X = X - self.mean
         return torch.mm(X, self.components.T)
+    
+    def to(self, device):
+        self.mean = self.mean.to(device)
+        self.components = self.components.to(device)
+        return self
 
 
 class LinearRegression_torch(torch.nn.Module):
