@@ -157,7 +157,7 @@ def calc_reduce_features_dataset(dataset, feat_transformers, net, featlayer,
     return feattsr_col
 
 
-def sweep_regressors(Xdict, y_all, regressors, regressor_names,):
+def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True):
     """
     Sweep through a list of regressors (with cross validation), and input type (Xdict)
     For each combination of Xtype and regressor, return the best CVed regressor
@@ -195,6 +195,8 @@ def sweep_regressors(Xdict, y_all, regressors, regressor_names,):
             result_summary[(xtype, label)] = \
                 {"alpha": alpha, "train_score": D2_train, "test_score": D2_test, "n_feat": nfeat}
             models[(xtype, label)] = clf
+            if verbose:
+                print(f"{xtype} {label} D2_train: {D2_train:.3f} D2_test: {D2_test:.3f}")
 
         result_df = pd.DataFrame(result_summary)
 
