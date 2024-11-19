@@ -15,6 +15,20 @@ import torch
 import numpy as np
 from typing import List, Union
 
+import sklearn
+import torch.nn as nn
+import torch as th
+
+def LinearLayer_from_sklearn(model):
+    """Convert a sklearn linear model to a PyTorch Linear layer."""
+    if isinstance(model, sklearn.model_selection._search.GridSearchCV):
+        model = model.best_estimator_
+    assert model.coef_.shape[1] == model.n_features_in_
+    readout = nn.Linear(model.coef_.shape[1], model.coef_.shape[0], bias=True)
+    readout.weight.data = th.tensor(model.coef_).float()
+    readout.bias.data = th.tensor(model.intercept_).float()
+    return readout
+
 
 class SRP_torch(torch.nn.Module):
     def __init__(self, srp: SparseRandomProjection, device="cpu"):
