@@ -94,10 +94,11 @@ def load_neural_trial_resp_tensor(data_path, subject_id,):
     trials_stim_names = data[subject_id]['trials']['stimulus_name']
     trials_resp_peak = data[subject_id]['trials']['response_peak']
     rspavg_stim_names = data[subject_id]['repavg']['stimulus_name']
+    rspavg_resp_peak = data[subject_id]['repavg']['response_peak']
     print("Trials shape:", trials_stim_names.shape, trials_resp_peak.shape)
-    print("Rspavg shape:", rspavg_stim_names.shape)
+    print("Rspavg shape:", rspavg_stim_names.shape, rspavg_resp_peak.shape)
     resp_tensor, trial_counters = create_response_tensor(trials_stim_names, trials_resp_peak, rspavg_stim_names)
     print("Response tensor shape:", resp_tensor.shape)
     print("Trial counters shape:", trial_counters.shape)
     print("min and max trial counters:", trial_counters.min(), trial_counters.max())
-    return resp_tensor, trial_counters
+    return rspavg_stim_names, rspavg_resp_peak, resp_tensor, trial_counters

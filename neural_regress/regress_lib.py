@@ -520,3 +520,23 @@ def perform_regression_sweeplayer_RidgeCV(feat_dict, resp_mat, layer_names=None,
     result_df, fit_models = sweep_regressors(Xdict, resp_mat, regressors, regressor_names, verbose=verbose)
     return result_df, fit_models, Xdict, tfm_dict
 
+
+@th.no_grad()
+def record_features(model, fetcher, dataset, batch_size=20, device="cuda"):
+    """Record features from the model using the fetcher."""
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    model.to(device).eval()
+    feat_col = {}
+    for imgs, _ in tqdm(loader):
+        model(imgs.to(device))
+        for key in fetcher.activations.keys():
+            if key not in feat_col:
+                feat_col[key] = []
+            feat_col[key].append(fetcher[key].cpu())
+    for key in feat_col.keys():
+        feat_col[key] = th.cat(feat_col[key], dim=0)
+        print(key, feat_col[key].shape)
+    return feat_col
+
+
+
