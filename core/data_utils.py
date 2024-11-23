@@ -42,6 +42,7 @@ def load_neural_data(data_path, subject_id, stimroot):
     resp_mat = data[subject_id]['repavg']['response_peak']  # Peak, avg response
     resp_temp_mat = data[subject_id]['repavg']['response_temporal']  # Temporal response
     stimulus_names = data[subject_id]['repavg']['stimulus_name']
+    
     image_fps = [f"{stimroot}/{stimname.decode('utf8')}" for stimname in stimulus_names]
     return {
         'brain_area': brain_area,
@@ -52,9 +53,41 @@ def load_neural_data(data_path, subject_id, stimroot):
         'resp_mat': resp_mat,
         'resp_temp_mat': resp_temp_mat,
         'image_fps': image_fps,
+        "stimulus_names": stimulus_names,
     }
+
+import os
+def parse_image_fullpaths(stimulus_names, stimroots):
+    """Parse image full paths from stimulus names and stimulus roots.
     
-    
+    Args:
+        stimulus_names: List/array of stimulus names (potentially byte strings)
+        stimroots: List of root directories to search for stimulus files
+        
+    Returns:
+        image_fps: List of full paths to stimulus files, with None for missing files
+    """
+    image_fps = []
+    for stimname in stimulus_names:
+        file_non_exist = True
+        # Convert byte string to regular string if needed
+        stim_str = stimname.decode('utf8') if isinstance(stimname, bytes) else stimname
+        for stimroot in stimroots:
+            fullpath = os.path.join(stimroot, stim_str)
+            if os.path.exists(fullpath):
+                image_fps.append(fullpath)
+                file_non_exist = False
+                break
+                
+        if file_non_exist:
+            print(f"File {stim_str} does not exist in any of the stimulus roots")
+            image_fps.append(None)
+    if not all(image_fps):
+        print("Warning: Some stimulus files were not found")
+    else:
+        print("All stimulus files were found")
+    return image_fps
+
 
 def create_response_tensor(trials_stim_names, trials_resp_peak, rspavg_stim_names):
     """Create a 3D tensor (stimulus x neuron x trial) from trial responses.
