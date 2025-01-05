@@ -190,7 +190,7 @@ def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_
             elif isinstance(estim, MultiOutputSeparateLassoCV):
                 clf = estim.fit(X_train, y_train)
                 clf = deepcopy(clf)
-                alpha = estim.alpha_per_target_()
+                alpha = estim.alpha_()
             elif hasattr(estim, "alpha"):
                 clf = GridSearchCV(estimator=estim, n_jobs=n_jobs,
                                    param_grid=dict(alpha=[1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100, 1000, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9], ),
@@ -599,7 +599,7 @@ class MultiOutputSeparateLassoCV(BaseEstimator, RegressorMixin):
 
     def alpha_per_target(self):
         return [model.alpha_ for model in self.models_]
-
+    
     def coef_per_target(self):
         return [model.coef_ for model in self.models_]
     
