@@ -157,6 +157,7 @@ def calc_reduce_features_dataset(dataset, feat_transformers, net, featlayer,
     return feattsr_col
 
 
+import time
 def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_jobs=-1):
     """
     Sweep through a list of regressors (with cross validation), and input type (Xdict)
@@ -181,26 +182,32 @@ def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_
         X_train, X_test = X_all[idx_train], X_all[idx_test]
         nfeat = X_train.shape[1]
         for estim, label in zip(regressors, regressor_names):
-            if hasattr(estim, "alpha"):
+            start_time = time.time()
+            if isinstance(estim, RidgeCV) or isinstance(estim, LassoCV) or isinstance(estim, MultiTaskLassoCV):
+                clf = estim.fit(X_train, y_train)
+                clf = deepcopy(clf)
+                alpha = estim.alpha_
+            elif isinstance(estim, MultiOutputSeparateLassoCV):
+                clf = estim.fit(X_train, y_train)
+                clf = deepcopy(clf)
+                alpha = estim.alpha_per_target_()
+            elif hasattr(estim, "alpha"):
                 clf = GridSearchCV(estimator=estim, n_jobs=n_jobs,
                                    param_grid=dict(alpha=[1e-4, 1e-3, 1e-2, 1e-1, 1, 10, 100, 1000, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9], ),
                                    ).fit(X_train, y_train)
                 alpha = clf.best_params_["alpha"]
-            elif isinstance(estim, RidgeCV) or isinstance(estim, LassoCV) or isinstance(estim, MultiTaskLassoCV):
-                clf = estim.fit(X_train, y_train)
-                clf = deepcopy(clf)
-                alpha = estim.alpha_
             else:
                 clf = estim.fit(X_train, y_train)
                 clf = deepcopy(clf)
                 alpha = np.nan
             D2_train = clf.score(X_train, y_train)
             D2_test = clf.score(X_test, y_test)
+            end_time = time.time()
             result_summary[(xtype, label)] = \
-                {"alpha": alpha, "train_score": D2_train, "test_score": D2_test, "n_feat": nfeat}
+                {"alpha": alpha, "train_score": D2_train, "test_score": D2_test, "n_feat": nfeat, "runtime": end_time - start_time}
             models[(xtype, label)] = clf
             if verbose:
-                print(f"{xtype} {label} D2_train: {D2_train:.3f} D2_test: {D2_test:.3f}")
+                print(f"{xtype} {label} D2_train: {D2_train:.3f} D2_test: {D2_test:.3f} time: {end_time - start_time:.3f}")
 
         result_df = pd.DataFrame(result_summary)
 
@@ -379,17 +386,15 @@ def _perform_regression_old(feat_dict, resp_mat, reliability, thresh=0.8, layerk
     return result_df, fit_models, chan_mask, Xdict
 
 
-def perform_regression_sweeplayer(feat_dict, resp_mat, layer_names=None, 
-                                  dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                                  regressor_list=["Ridge",], verbose=True,
-                                  pretrained_Xtransforms={}):
-    """Perform regression using extracted features and neural responses."""
-    # Preprocess features
+def transform_features2Xdict(feat_dict, layer_names=None, 
+                             dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
+                             pretrained_Xtransforms={}):
     Xdict = {}
     tfm_dict = {}
     for layerkey in feat_dict.keys() if layer_names is None else layer_names:
         feat_tsr = feat_dict[layerkey]
         print(layerkey, feat_tsr.shape)
+        featmat = feat_tsr.flatten(start_dim=1)
         featmat = feat_tsr.flatten(start_dim=1)
         for dimred in dimred_list:
             if dimred.startswith("pca"):
@@ -422,6 +427,7 @@ def perform_regression_sweeplayer(feat_dict, resp_mat, layer_names=None,
                     srp_transformer = SparseRandomProjection(n_components=n_components)
                     featmat_srp = srp_transformer.fit_transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
+                tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
             elif dimred == "sp_avg":
                 featmat_avg = feat_tsr.mean(dim=(2, 3))  # B x C
                 Xdict.update({f"{layerkey}_sp_avg": featmat_avg})
@@ -436,7 +442,17 @@ def perform_regression_sweeplayer(feat_dict, resp_mat, layer_names=None,
                 tfm_dict.update({f"{layerkey}_full": lambda x: x.flatten(start_dim=1)})
             else:
                 raise ValueError(f"Unknown dimension reduction method: {dimred}")
-        
+    return Xdict, tfm_dict
+
+
+def perform_regression_sweeplayer(feat_dict, resp_mat, layer_names=None, 
+                                  dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
+                                  regressor_list=["Ridge",], verbose=True,
+                                  pretrained_Xtransforms={}):
+    """Perform regression using extracted features and neural responses."""
+    # Preprocess features
+    Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
+                                    dimred_list, pretrained_Xtransforms)
     # Define regressors
     regressors = []
     for regressor_name in regressor_list:
@@ -462,59 +478,8 @@ def perform_regression_sweeplayer_RidgeCV(feat_dict, resp_mat, layer_names=None,
                                   verbose=True):
     """Perform regression using extracted features and neural responses."""
     # Preprocess features
-    Xdict = {}
-    tfm_dict = {}
-    for layerkey in feat_dict.keys() if layer_names is None else layer_names:
-        feat_tsr = feat_dict[layerkey]
-        print(layerkey, feat_tsr.shape)
-        featmat = feat_tsr.flatten(start_dim=1)
-        for dimred in dimred_list:
-            if dimred.startswith("pca"):
-                n_components = int(dimred.split("pca")[-1])
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    pca_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_pca = pca_transformer.transform(featmat)
-                else:
-                    pca_transformer = PCA(n_components=n_components)
-                    featmat_pca = pca_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_pca})
-                tfm_dict.update({f"{layerkey}_{dimred}": pca_transformer})
-            elif dimred == "srp":
-                srp_transformer = SparseRandomProjection()
-                featmat_srp = srp_transformer.fit_transform(featmat)
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_srp = srp_transformer.transform(featmat)
-                else:
-                    srp_transformer = SparseRandomProjection()
-                    featmat_srp = srp_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
-                tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
-            elif dimred.startswith("srp"):
-                n_components = int(dimred.split("srp")[-1])
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_srp = srp_transformer.transform(featmat)
-                else:
-                    srp_transformer = SparseRandomProjection(n_components=n_components)
-                    featmat_srp = srp_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
-                tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
-            elif dimred == "sp_avg":
-                featmat_avg = feat_tsr.mean(dim=(2, 3))  # B x C
-                Xdict.update({f"{layerkey}_sp_avg": featmat_avg})
-                tfm_dict.update({f"{layerkey}_sp_avg": lambda x: x.mean(dim=(2,3))})
-            elif dimred == "sp_cent":
-                centpos = (feat_tsr.shape[2] // 2, feat_tsr.shape[3] // 2)
-                featmat_cent = feat_tsr[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))  # B x n_components
-                Xdict.update({f"{layerkey}_sp_cent": featmat_cent})
-                tfm_dict.update({f"{layerkey}_sp_cent": lambda x: x[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))})
-            elif dimred == "full":
-                Xdict.update({f"{layerkey}_full": featmat})
-                tfm_dict.update({f"{layerkey}_full": lambda x: x.flatten(start_dim=1)})
-            else:
-                raise ValueError(f"Unknown dimension reduction method: {dimred}")
-        
+    Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
+                                    dimred_list, pretrained_Xtransforms)
     # Define regressors
     regressors = [RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)]
     regressor_names = ["RidgeCV"]
@@ -523,76 +488,133 @@ def perform_regression_sweeplayer_RidgeCV(feat_dict, resp_mat, layer_names=None,
     return result_df, fit_models, Xdict, tfm_dict
 
 
-
-def perform_regression_sweeplayer_LassoCV(feat_dict, resp_mat, layer_names=None, 
+def perform_regression_sweeplayer_MultiTaskLassoCV(feat_dict, resp_mat, layer_names=None, 
                                   dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                                  alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
+                                  n_alphas=100, #alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
                                   alpha_per_target=True,
                                   pretrained_Xtransforms={},
                                   verbose=True):
     """Perform regression using extracted features and neural responses."""
     # Preprocess features
-    Xdict = {}
-    tfm_dict = {}
-    for layerkey in feat_dict.keys() if layer_names is None else layer_names:
-        feat_tsr = feat_dict[layerkey]
-        print(layerkey, feat_tsr.shape)
-        featmat = feat_tsr.flatten(start_dim=1)
-        for dimred in dimred_list:
-            if dimred.startswith("pca"):
-                n_components = int(dimred.split("pca")[-1])
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    pca_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_pca = pca_transformer.transform(featmat)
-                else:
-                    pca_transformer = PCA(n_components=n_components)
-                    featmat_pca = pca_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_pca})
-                tfm_dict.update({f"{layerkey}_{dimred}": pca_transformer})
-            elif dimred == "srp":
-                srp_transformer = SparseRandomProjection()
-                featmat_srp = srp_transformer.fit_transform(featmat)
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_srp = srp_transformer.transform(featmat)
-                else:
-                    srp_transformer = SparseRandomProjection()
-                    featmat_srp = srp_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
-                tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
-            elif dimred.startswith("srp"):
-                n_components = int(dimred.split("srp")[-1])
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_srp = srp_transformer.transform(featmat)
-                else:
-                    srp_transformer = SparseRandomProjection(n_components=n_components)
-                    featmat_srp = srp_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
-                tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
-            elif dimred == "sp_avg":
-                featmat_avg = feat_tsr.mean(dim=(2, 3))  # B x C
-                Xdict.update({f"{layerkey}_sp_avg": featmat_avg})
-                tfm_dict.update({f"{layerkey}_sp_avg": lambda x: x.mean(dim=(2,3))})
-            elif dimred == "sp_cent":
-                centpos = (feat_tsr.shape[2] // 2, feat_tsr.shape[3] // 2)
-                featmat_cent = feat_tsr[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))  # B x n_components
-                Xdict.update({f"{layerkey}_sp_cent": featmat_cent})
-                tfm_dict.update({f"{layerkey}_sp_cent": lambda x: x[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))})
-            elif dimred == "full":
-                Xdict.update({f"{layerkey}_full": featmat})
-                tfm_dict.update({f"{layerkey}_full": lambda x: x.flatten(start_dim=1)})
-            else:
-                raise ValueError(f"Unknown dimension reduction method: {dimred}")
-        
+    Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
+                                    dimred_list, pretrained_Xtransforms)
     # Define regressors
-    regressors = [MultiTaskLassoCV(cv=5, alphas=alpha_list, n_jobs=-1)] # alpha_per_target=alpha_per_target RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)
-    regressor_names = ["LassoCV"]
-    
+    regressors = [MultiTaskLassoCV(cv=5, n_alphas=n_alphas, n_jobs=-1)] # alpha_per_target=alpha_per_target RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)
+    regressor_names = ["MultiTaskLassoCV"]
     result_df, fit_models = sweep_regressors(Xdict, resp_mat, regressors, regressor_names, verbose=verbose)
     return result_df, fit_models, Xdict, tfm_dict
 
 
+def perform_regression_sweeplayer_LassoCV_sepchannel(feat_dict, resp_mat, layer_names=None, 
+                                  dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
+                                  n_alphas=100, #alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
+                                  alpha_per_target=True,
+                                  pretrained_Xtransforms={},
+                                  verbose=True):
+    """Perform regression using extracted features and neural responses."""
+    # Preprocess features
+    Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
+                                    dimred_list, pretrained_Xtransforms)
+    # Define regressors
+    regressors = [MultiOutputSeparateLassoCV(cv=5, n_alphas=n_alphas, n_jobs=-1)] # alpha_per_target=alpha_per_target RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)
+    regressor_names = ["MultiOutputSeparateLassoCV"]
+    result_df, fit_models = sweep_regressors(Xdict, resp_mat, regressors, regressor_names, verbose=verbose)
+    return result_df, fit_models, Xdict, tfm_dict
+
+
+import numpy as np
+from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.linear_model import LassoCV
+from tqdm.auto import tqdm
+class MultiOutputSeparateLassoCV(BaseEstimator, RegressorMixin):
+    """
+    Custom estimator that fits a separate LassoCV model for each target 
+    in a multi-output regression problem, in sequence.
+
+    Parameters
+    ----------
+    lasso_cv_params : dict, optional
+        Dictionary of parameters passed to the underlying LassoCV estimator.
+        Examples include: 'alphas', 'cv', 'max_iter', etc.
+
+    Attributes
+    ----------
+    models_ : list of LassoCV
+        List of fitted LassoCV models, one per output target.
+    """
+    def __init__(self, **lasso_cv_params):
+        # Store any parameters for LassoCV in a dictionary
+        self.lasso_cv_params = lasso_cv_params
+
+    def fit(self, X, Y, pbar=True):
+        """
+        Fit a separate LassoCV model for each column of Y.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training input samples.
+        Y : array-like of shape (n_samples, n_outputs)
+            Training targets for multi-output regression.
+
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
+        X = np.asarray(X)
+        Y = np.asarray(Y)
+        
+        # Make sure Y is 2D
+        if Y.ndim == 1:
+            Y = Y.reshape(-1, 1)
+        
+        # Fit one model per output target
+        self.models_ = []
+        for i in range(Y.shape[1]) if not pbar else tqdm(range(Y.shape[1])):
+            model = LassoCV(**self.lasso_cv_params)
+            model.fit(X, Y[:, i])
+            self.models_.append(model)
+        
+        return self
+
+    def predict(self, X):
+        """
+        Predict for each target using the corresponding LassoCV model.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Samples to predict.
+
+        Returns
+        -------
+        Y_pred : ndarray of shape (n_samples, n_outputs)
+            Predicted values for each target.
+        """
+        X = np.asarray(X)
+        # Predict each target, then stack column-wise
+        predictions = [model.predict(X) for model in self.models_]
+        return np.column_stack(predictions)
+
+    def alpha_per_target(self):
+        return [model.alpha_ for model in self.models_]
+
+    def coef_per_target(self):
+        return [model.coef_ for model in self.models_]
+    
+    def intercept_per_target(self):
+        return [model.intercept_ for model in self.models_]
+    
+    def alpha_(self):
+        return self.alpha_per_target()
+    
+    def coef_(self):
+        return self.coef_per_target()
+    
+    def intercept_(self):
+        return self.intercept_per_target()
+    
 
 @th.no_grad()
 def record_features(model, fetcher, dataset, batch_size=20, device="cuda"):

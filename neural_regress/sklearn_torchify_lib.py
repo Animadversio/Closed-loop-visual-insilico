@@ -156,3 +156,27 @@ if __name__ == "__main__":
     X_red = srp.transform(X)
     X_red_th = srp_th(torch.from_numpy(X))
     assert torch.allclose(torch.from_numpy(X_red).float(), X_red_th, atol=1E-5)
+    
+    
+def eval_regressor(regressor, Xmat, ymat, idx_train, idx_test, target_idx=1):
+    """Evaluate a regressor on the given data. speed and score are computed."""
+    import time
+    if idx_train is None or idx_test is None:
+        idx_train, idx_test = train_test_split(np.arange(len(ymat)), test_size=0.2, random_state=42, shuffle=True)
+    if target_idx is None:
+        target_idx = slice(None)
+    start = time.time()
+    regressor.fit(Xmat[idx_train], ymat[idx_train, target_idx])
+    train_score = regressor.score(Xmat[idx_train], ymat[idx_train, target_idx])
+    test_score = regressor.score(Xmat[idx_test], ymat[idx_test, target_idx])
+    print(f"train score: {train_score:.3f} test score: {test_score:.3f}")
+    if hasattr(regressor, "best_estimator_"):
+        coef = regressor.best_estimator_.coef_
+    elif hasattr(regressor, "coef_"):
+        coef = regressor.coef_
+    else:
+        raise ValueError("No coef attribute found")
+    sparsity = (coef != 0).sum() / coef.size
+    print(f"weight sparsity: {sparsity:.3f}")
+    print(f"time elapsed for {regressor.__class__.__name__}: {time.time() - start:.3f} sec")
+    return regressor, train_score, test_score

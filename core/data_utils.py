@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import os
 
 
 def load_from_hdf5(filename):
@@ -56,7 +57,7 @@ def load_neural_data(data_path, subject_id, stimroot):
         "stimulus_names": stimulus_names,
     }
 
-import os
+
 def parse_image_fullpaths(stimulus_names, stimroots):
     """Parse image full paths from stimulus names and stimulus roots.
     
