@@ -1,4 +1,5 @@
 import torch as th
+import torch
 import torchvision.transforms as T
 import torchvision.models as models
 from torchvision.models import resnet50
@@ -27,7 +28,7 @@ def load_model_transform(modelname, device="cuda"):
         transforms_pipeline = preprocess
     elif modelname == "resnet50_dino":
         # https://github.com/facebookresearch/dino
-        model = torch.hub.load('facebookresearch/dino:main', 'dino_resnet50')
+        model = th.hub.load('facebookresearch/dino:main', 'dino_resnet50')
         transforms_pipeline = T.Compose([
             T.ToTensor(),
             T.Resize((224, 224)),
