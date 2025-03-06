@@ -47,7 +47,7 @@ for subject_id in ['paul_240713-240710',
     #%%
     batch_size = 96
     # modelname = "resnet50"
-    for modelname in ["resnet50_robust", "resnet50_clip", "resnet50_dino", "resnet50", ]: # 
+    for modelname in ["resnet50_clip", "resnet50_dino", "resnet50", "resnet50_robust", ]: # 
         model, transforms_pipeline = load_model_transform(modelname, device=device)
         # Prepare dataset with transforms
         dataset = ImagePathDataset(image_fps, scores=resp_mat, transform=transforms_pipeline)
