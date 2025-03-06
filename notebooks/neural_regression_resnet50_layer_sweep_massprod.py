@@ -29,14 +29,14 @@ stimroot = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/
 # Load data
 data = load_from_hdf5(data_path)
 print("subjects:", list(data.keys()))
-
+#%%
 subject_id = 'paul_240713-240710'
 for subject_id in ['paul_240713-240710', 
                    'paul_20240713-20240710', 
                    'red_20240713-20240710',
                    'baby1_20240329-20240325', 
                    'baby1_240329-240325', 
-                   'baby5_240819-240822', ]
+                   'baby5_240819-240822', ]: 
     data_dict = load_neural_data(data_path, subject_id, stimroot)
     image_fps = data_dict['image_fps']
     resp_mat = data_dict['resp_mat']
