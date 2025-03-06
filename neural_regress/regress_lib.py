@@ -406,16 +406,15 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                     featmat_pca = pca_transformer.transform(featmat)
                 else:
                     if use_pca_dual:
-                        from PCA_dual_solver_lib import pca_dual_fit_transform
+                        from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform
                         pca_transformer, featmat_pca = pca_dual_fit_transform(featmat, n_components, device='cuda')
                     else:
                         pca_transformer = PCA(n_components=n_components)
                         featmat_pca = pca_transformer.fit_transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_pca})
                 tfm_dict.update({f"{layerkey}_{dimred}": pca_transformer})
+                X_shape = featmat_pca.shape
             elif dimred == "srp":
-                srp_transformer = SparseRandomProjection()
-                featmat_srp = srp_transformer.fit_transform(featmat)
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
                     srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
                     featmat_srp = srp_transformer.transform(featmat)
@@ -424,6 +423,7 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                     featmat_srp = srp_transformer.fit_transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
                 tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
+                X_shape = featmat_srp.shape
             elif dimred.startswith("srp"):
                 n_components = int(dimred.split("srp")[-1])
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
@@ -434,22 +434,27 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                     featmat_srp = srp_transformer.fit_transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
                 tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
+                X_shape = featmat_srp.shape
             elif dimred == "sp_avg":
                 featmat_avg = feat_tsr.mean(dim=(2, 3))  # B x C
                 Xdict.update({f"{layerkey}_sp_avg": featmat_avg})
                 tfm_dict.update({f"{layerkey}_sp_avg": lambda x: x.mean(dim=(2,3))})
+                X_shape = featmat_avg.shape
             elif dimred == "sp_cent":
                 centpos = (feat_tsr.shape[2] // 2, feat_tsr.shape[3] // 2)
                 featmat_cent = feat_tsr[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))  # B x n_components
                 Xdict.update({f"{layerkey}_sp_cent": featmat_cent})
                 tfm_dict.update({f"{layerkey}_sp_cent": lambda x: x[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))})
+                X_shape = featmat_cent.shape
             elif dimred == "full":
                 Xdict.update({f"{layerkey}_full": featmat})
                 tfm_dict.update({f"{layerkey}_full": lambda x: x.flatten(start_dim=1)})
+                X_shape = featmat.shape
             else:
                 raise ValueError(f"Unknown dimension reduction method: {dimred}")
-            print(f"Time taken to transform {layerkey} {dimred}: {time.time() - time_dimred:.3f}s")
+            print(f"Time taken to transform {layerkey} {dimred} {list(X_shape)}: {time.time() - time_dimred:.3f}s")
         print(f"Time taken to transform {layerkey}: {time.time() - time_feat_tsr:.3f}s")
+    print(f"Time taken to transform all features: {time.time() - time_start:.3f}s")
     return Xdict, tfm_dict
 
 
