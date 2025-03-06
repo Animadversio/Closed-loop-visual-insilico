@@ -388,23 +388,29 @@ def _perform_regression_old(feat_dict, resp_mat, reliability, thresh=0.8, layerk
 
 def transform_features2Xdict(feat_dict, layer_names=None, 
                              dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                             pretrained_Xtransforms={}):
+                             pretrained_Xtransforms={}, use_pca_dual=False):
     Xdict = {}
     tfm_dict = {}
+    time_start = time.time()
     for layerkey in feat_dict.keys() if layer_names is None else layer_names:
         feat_tsr = feat_dict[layerkey]
-        print(layerkey, feat_tsr.shape)
-        featmat = feat_tsr.flatten(start_dim=1)
+        time_feat_tsr = time.time()
+        print(layerkey, feat_tsr.shape, )
         featmat = feat_tsr.flatten(start_dim=1)
         for dimred in dimred_list:
+            time_dimred = time.time()
             if dimred.startswith("pca"):
                 n_components = int(dimred.split("pca")[-1])
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
                     pca_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
                     featmat_pca = pca_transformer.transform(featmat)
                 else:
-                    pca_transformer = PCA(n_components=n_components)
-                    featmat_pca = pca_transformer.fit_transform(featmat)
+                    if use_pca_dual:
+                        from PCA_dual_solver_lib import pca_dual_fit_transform
+                        pca_transformer, featmat_pca = pca_dual_fit_transform(featmat, n_components, device='cuda')
+                    else:
+                        pca_transformer = PCA(n_components=n_components)
+                        featmat_pca = pca_transformer.fit_transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_pca})
                 tfm_dict.update({f"{layerkey}_{dimred}": pca_transformer})
             elif dimred == "srp":
@@ -442,17 +448,19 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                 tfm_dict.update({f"{layerkey}_full": lambda x: x.flatten(start_dim=1)})
             else:
                 raise ValueError(f"Unknown dimension reduction method: {dimred}")
+            print(f"Time taken to transform {layerkey} {dimred}: {time.time() - time_dimred:.3f}s")
+        print(f"Time taken to transform {layerkey}: {time.time() - time_feat_tsr:.3f}s")
     return Xdict, tfm_dict
 
 
 def perform_regression_sweeplayer(feat_dict, resp_mat, layer_names=None, 
                                   dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                                  regressor_list=["Ridge",], verbose=True,
+                                  regressor_list=["Ridge",], verbose=True, use_pca_dual=False,
                                   pretrained_Xtransforms={}):
     """Perform regression using extracted features and neural responses."""
     # Preprocess features
     Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
-                                    dimred_list, pretrained_Xtransforms)
+                                    dimred_list, pretrained_Xtransforms, use_pca_dual=use_pca_dual)
     # Define regressors
     regressors = []
     for regressor_name in regressor_list:
@@ -475,11 +483,11 @@ def perform_regression_sweeplayer_RidgeCV(feat_dict, resp_mat, layer_names=None,
                                   alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
                                   alpha_per_target=True,
                                   pretrained_Xtransforms={},
-                                  verbose=True):
+                                  verbose=True, use_pca_dual=False):
     """Perform regression using extracted features and neural responses."""
     # Preprocess features
     Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
-                                    dimred_list, pretrained_Xtransforms)
+                                    dimred_list, pretrained_Xtransforms, use_pca_dual=use_pca_dual)
     # Define regressors
     regressors = [RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)]
     regressor_names = ["RidgeCV"]
@@ -493,11 +501,11 @@ def perform_regression_sweeplayer_MultiTaskLassoCV(feat_dict, resp_mat, layer_na
                                   n_alphas=100, #alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
                                   alpha_per_target=True,
                                   pretrained_Xtransforms={},
-                                  verbose=True):
+                                  verbose=True, use_pca_dual=False):
     """Perform regression using extracted features and neural responses."""
     # Preprocess features
     Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
-                                    dimred_list, pretrained_Xtransforms)
+                                    dimred_list, pretrained_Xtransforms, use_pca_dual=use_pca_dual)
     # Define regressors
     regressors = [MultiTaskLassoCV(cv=5, n_alphas=n_alphas, n_jobs=-1)] # alpha_per_target=alpha_per_target RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)
     regressor_names = ["MultiTaskLassoCV"]
@@ -510,11 +518,11 @@ def perform_regression_sweeplayer_LassoCV_sepchannel(feat_dict, resp_mat, layer_
                                   n_alphas=100, #alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
                                   alpha_per_target=True,
                                   pretrained_Xtransforms={},
-                                  verbose=True):
+                                  verbose=True, use_pca_dual=False):
     """Perform regression using extracted features and neural responses."""
     # Preprocess features
     Xdict, tfm_dict = transform_features2Xdict(feat_dict, layer_names, 
-                                    dimred_list, pretrained_Xtransforms)
+                                    dimred_list, pretrained_Xtransforms, use_pca_dual=use_pca_dual)
     # Define regressors
     regressors = [MultiOutputSeparateLassoCV(cv=5, n_alphas=n_alphas, n_jobs=-1)] # alpha_per_target=alpha_per_target RidgeCV(alphas=alpha_list, alpha_per_target=alpha_per_target)
     regressor_names = ["MultiOutputSeparateLassoCV"]
