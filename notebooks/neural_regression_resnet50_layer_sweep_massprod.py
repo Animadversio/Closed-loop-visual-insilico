@@ -46,7 +46,7 @@ for modelname in ["resnet50_robust", "resnet50_clip", "resnet50_dino"]: # "resne
     # Prepare fetcher
     fetcher = featureFetcher(model, input_size=(3, 224, 224), print_module=False)
     module_names = [name for name in fetcher.module_names.values() if "Bottleneck" in name]
-    # record features for all layers / blocks in resnet50
+    # Add hooks to all layers / blocks in resnet50
     for name in module_names: 
         fetcher.record(name, store_device='cpu', ingraph=False, )
 
@@ -71,15 +71,17 @@ for modelname in ["resnet50_robust", "resnet50_clip", "resnet50_dino"]: # "resne
     result_df_lyrswp.to_csv(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_sweep_RidgeCV.csv"))
     th.save(fit_models_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_fitmodels_RidgeCV.pth")) 
     # th.save(Xtfmer_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"))
-    pkl.dump(Xtfmer_lyrswp, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"), "wb"))
+    # pkl.dump(Xtfmer_lyrswp, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"), "wb"))
 
     # %%
+    
     figh = plot_result_df_per_layer(result_df_lyrswp, )
     figh.suptitle(f"{subject_id} {modelname} layer sweep")
     figh.tight_layout()
     saveallforms(figdir, f"{subject_id}_{modelname}_layer_sweep_synopisis", figh=figh)
     # %%
-    for thresh in [0.1, 0.3, 0.5, 0.7, 0.9]:
+    # Mask out unreliable channels and plot again
+    for thresh in [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]:
         channel_count = (reliability > thresh).sum()
         result_df_masked = construct_result_df_masked(pred_D2_dict['D2_per_unit_train_dict'], 
                                                     pred_D2_dict['D2_per_unit_test_dict'], 
@@ -87,6 +89,8 @@ for modelname in ["resnet50_robust", "resnet50_clip", "resnet50_dino"]: # "resne
         figh = plot_result_df_per_layer(result_df_masked, )
         figh.suptitle(f"{subject_id} {modelname} layer sweep | reliable channels > {thresh} (N={channel_count})")
         figh.tight_layout()
+        figh.show()
         saveallforms(figdir, f"{subject_id}_{modelname}_layer_sweep_synopisis_reliable_thresh{thresh}_masked", figh=figh)
     plt.close("all")
+    
 # %%
