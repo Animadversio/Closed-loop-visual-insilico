@@ -35,7 +35,9 @@ def pca_dual_torch(X, n_components=None, device='cuda'):
     # 1) Center the data by subtracting the mean of each feature
     X_mean = X.mean(dim=0, keepdim=True)  # shape (1, d)
     X_centered = X - X_mean               # shape (n, d)
-    X_centered = X_centered.to(device)
+    # note some models return float16, so we need to convert to float32, or eigendecomposition will fail
+    X_mean = X_mean.float()
+    X_centered = X_centered.float().to(device)
     # 2) Form the Gram matrix G = X_centered @ X_centered.T, which is (n, n)
     G = X_centered @ X_centered.T       # shape (n, n)
     # 3) Compute the eigen-decomposition of G
