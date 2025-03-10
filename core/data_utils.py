@@ -29,11 +29,15 @@ def load_from_hdf5(filename):
         return recursively_load_dict(f)
     
 
-def load_neural_data(data_path, subject_id, stimroot):
+def load_neural_data(data_path, subject_id, stimroot=None):
     """Load neural data and image file paths."""
     data = load_from_hdf5(data_path)
+    if subject_id not in data:
+        print("List of subjects in the data:", list(data.keys()))
+        raise ValueError(f"Subject {subject_id} not found in {data_path}")
     # Meta data
     brain_area = data[subject_id]["neuron_metadata"]["brain_area"]
+    brain_area = [brain_area.decode('utf8') for brain_area in brain_area]
     ncsnr = data[subject_id]["neuron_metadata"]["ncsnr"]
     reliability = data[subject_id]["neuron_metadata"]["reliability"]
     # Display parameters
@@ -43,8 +47,11 @@ def load_neural_data(data_path, subject_id, stimroot):
     resp_mat = data[subject_id]['repavg']['response_peak']  # Peak, avg response
     resp_temp_mat = data[subject_id]['repavg']['response_temporal']  # Temporal response
     stimulus_names = data[subject_id]['repavg']['stimulus_name']
-    
-    image_fps = [f"{stimroot}/{stimname.decode('utf8')}" for stimname in stimulus_names]
+    stimulus_names = [stimname.decode('utf8') for stimname in stimulus_names]
+    if stimroot is not None:    
+        image_fps = [f"{stimroot}/{stimname}" for stimname in stimulus_names]
+    else:
+        image_fps = stimulus_names
     return {
         'brain_area': brain_area,
         'ncsnr': ncsnr,
