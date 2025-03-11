@@ -78,11 +78,9 @@ def compare_pca_results(
     x_pca_sklearn,         # shape (n, k): projection from sklearn's PCA
     components_sklearn,    # shape (k, d): principal axes from sklearn's PCA
     explained_var_sklearn, # shape (k,): explained variance from sklearn's PCA
-    
     X_proj_torch,          # shape (n, k): projection from pca_dual_torch
     PC_axes_torch,         # shape (k, d): principal axes from pca_dual_torch
     explained_var_torch,   # shape (k,): explained variance from pca_dual_torch
-    
     rtol=1e-5, atol=1e-8
 ):
     """
