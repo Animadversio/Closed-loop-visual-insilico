@@ -1,4 +1,4 @@
-
+import time
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -8,17 +8,22 @@ from tqdm.auto import tqdm
 from collections import defaultdict
 from copy import deepcopy
 import torch
+import torch as th
+import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import ToPILImage, ToTensor, Normalize, Resize
+from scipy.stats import spearmanr, pearsonr
+import sklearn
 from sklearn.random_projection import johnson_lindenstrauss_min_dim, \
     SparseRandomProjection, GaussianRandomProjection
+from torch.utils.data import Subset, SubsetRandomSampler
 from sklearn.linear_model import LogisticRegression, LinearRegression, \
     Ridge, Lasso, PoissonRegressor, RidgeCV, LassoCV, MultiTaskLassoCV
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.decomposition import PCA
-from scipy.stats import spearmanr, pearsonr
 from circuit_toolkit.plot_utils import show_imgrid
 from circuit_toolkit.layer_hook_utils import featureFetcher
 from circuit_toolkit.dataset_utils import ImagePathDataset, DataLoader
@@ -108,7 +113,6 @@ def calc_reduce_features(score_vect, imgfullpath_vect, feat_transformers, net, f
     return feattsr_col
 
 
-from torch.utils.data import Subset, SubsetRandomSampler
 def calc_reduce_features_dataset(dataset, feat_transformers, net, featlayer,
                   batch_size=40, workers=6, img_dim=(227, 227), idx_range=None):
     """Calculate reduced features for a set of images. (for memory saving)
@@ -157,7 +161,6 @@ def calc_reduce_features_dataset(dataset, feat_transformers, net, featlayer,
     return feattsr_col
 
 
-import time
 def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_jobs=-1):
     """
     Sweep through a list of regressors (with cross validation), and input type (Xdict)
@@ -345,10 +348,6 @@ def evaluate_dict(y_pred_dict, y_true, label, savedir=None):
     return df, eval_dict, y_pred_dict
 
 
-import sklearn
-import torch.nn as nn
-import torch as th
-
 def LinearLayer_from_sklearn(model):
     """Convert a sklearn linear model to a PyTorch Linear layer."""
     if isinstance(model, sklearn.model_selection._search.GridSearchCV):
@@ -386,7 +385,8 @@ def _perform_regression_old(feat_dict, resp_mat, reliability, thresh=0.8, layerk
     return result_df, fit_models, chan_mask, Xdict
 
 
-
+# Define explicit feature reduction methods. 
+# Easier for exporting and serializing.
 def avgtoken_transform(x):
     return x.mean(dim=(1))
 
@@ -568,10 +568,6 @@ def perform_regression_sweeplayer_LassoCV_sepchannel(feat_dict, resp_mat, layer_
     return result_df, fit_models, Xdict, tfm_dict
 
 
-import numpy as np
-from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.linear_model import LassoCV
-from tqdm.auto import tqdm
 class MultiOutputSeparateLassoCV(BaseEstimator, RegressorMixin):
     """
     Custom estimator that fits a separate LassoCV model for each target 
