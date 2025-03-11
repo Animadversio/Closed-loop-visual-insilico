@@ -386,9 +386,32 @@ def _perform_regression_old(feat_dict, resp_mat, reliability, thresh=0.8, layerk
     return result_df, fit_models, chan_mask, Xdict
 
 
+
+def avgtoken_transform(x):
+    return x.mean(dim=(1))
+
+
+def clstoken_transform(x):
+    return x[:, 0, :]
+
+
+def flatten_transform(x):
+    return x.flatten(start_dim=1)
+
+
+def sp_avg_transform(x):
+    return x.mean(dim=(2,3))
+
+
+def sp_cent_transform(x):
+    centpos = (x.shape[2] // 2, x.shape[3] // 2)
+    return x[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))
+
+
 def transform_features2Xdict(feat_dict, layer_names=None, 
                              dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                             pretrained_Xtransforms={}, use_pca_dual=False):
+                             pretrained_Xtransforms={}, use_pca_dual=True):
+    # now we use pca dual solver by default, changing default behavior. 
     Xdict = {}
     tfm_dict = {}
     time_start = time.time()
@@ -438,17 +461,27 @@ def transform_features2Xdict(feat_dict, layer_names=None,
             elif dimred == "sp_avg":
                 featmat_avg = feat_tsr.mean(dim=(2, 3))  # B x C
                 Xdict.update({f"{layerkey}_sp_avg": featmat_avg})
-                tfm_dict.update({f"{layerkey}_sp_avg": lambda x: x.mean(dim=(2,3))})
+                tfm_dict.update({f"{layerkey}_sp_avg": sp_avg_transform})
                 X_shape = featmat_avg.shape
             elif dimred == "sp_cent":
                 centpos = (feat_tsr.shape[2] // 2, feat_tsr.shape[3] // 2)
                 featmat_cent = feat_tsr[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))  # B x n_components
                 Xdict.update({f"{layerkey}_sp_cent": featmat_cent})
-                tfm_dict.update({f"{layerkey}_sp_cent": lambda x: x[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))})
+                tfm_dict.update({f"{layerkey}_sp_cent": sp_cent_transform})
                 X_shape = featmat_cent.shape
+            elif dimred == "avgtoken":
+                featmat_avg = feat_tsr.mean(dim=(1))  # B x C
+                Xdict.update({f"{layerkey}_avgtoken": featmat_avg})
+                tfm_dict.update({f"{layerkey}_avgtoken": avgtoken_transform})
+                X_shape = featmat_avg.shape
+            elif dimred == "clstoken":
+                featmat_cls = feat_tsr[:, 0, :]  # B x C
+                Xdict.update({f"{layerkey}_clstoken": featmat_cls})
+                tfm_dict.update({f"{layerkey}_clstoken": clstoken_transform})
+                X_shape = featmat_cls.shape
             elif dimred == "full":
                 Xdict.update({f"{layerkey}_full": featmat})
-                tfm_dict.update({f"{layerkey}_full": lambda x: x.flatten(start_dim=1)})
+                tfm_dict.update({f"{layerkey}_full": flatten_transform})
                 X_shape = featmat.shape
             else:
                 raise ValueError(f"Unknown dimension reduction method: {dimred}")
