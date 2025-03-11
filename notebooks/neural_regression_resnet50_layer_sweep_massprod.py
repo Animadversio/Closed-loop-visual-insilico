@@ -16,7 +16,7 @@ from circuit_toolkit.plot_utils import show_imgrid
 from circuit_toolkit.layer_hook_utils import featureFetcher
 from circuit_toolkit.dataset_utils import ImagePathDataset, DataLoader
 from circuit_toolkit.plot_utils import saveallforms
-from core.data_utils import load_neural_data, load_from_hdf5
+from core.data_utils import load_neural_data, load_from_hdf5, parse_image_fullpaths
 from core.model_load_utils import load_model_transform
 from neural_regress.regress_lib import record_features, perform_regression_sweeplayer, perform_regression_sweeplayer_RidgeCV
 from neural_regress.regress_eval_lib import format_result_df, plot_result_df_per_layer, construct_result_df_masked, \
@@ -24,20 +24,27 @@ from neural_regress.regress_eval_lib import format_result_df, plot_result_df_per
 #%%
 device = "cuda" if th.cuda.is_available() else "cpu"
 dataroot = r"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation"
-data_path = join(dataroot, "nsd_shared1000_6monkeys_2024.h5")
-stimroot = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/Stimuli/shared1000"
+
+stimuli_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Stimuli"
+imgdir_shared = join(stimuli_root, "shared1000")
+imgdir = join(stimuli_root, "stimuli_pilot_20241119/results")
+ephys_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Ephys_Data"
+data_path = join(ephys_root, "vvs-accentuate-day1_normalize_red_20241212-20241220.h5")
+# data_path = join(ephys_root, "nsd_shared1000_6monkeys_2024.h5")
+
 # Load data
 data = load_from_hdf5(data_path)
 print("subjects:", list(data.keys()))
 #%%
-subject_id = 'paul_240713-240710'
-for subject_id in ['paul_240713-240710', 
-                   'paul_20240713-20240710', 
-                   'red_20240713-20240710',
-                   'baby1_20240329-20240325', 
-                   'baby1_240329-240325', 
-                   'baby5_240819-240822', ]: 
-    data_dict = load_neural_data(data_path, subject_id, stimroot)
+# for subject_id in ['paul_240713-240710', 
+#                    'paul_20240713-20240710', 
+#                    'red_20240713-20240710',
+#                    'baby1_20240329-20240325', 
+#                    'baby1_240329-240325', 
+#                    'baby5_240819-240822', ]: 
+for subject_id in ['red_20241212-20241220', ]:
+    data_dict = load_neural_data(data_path, subject_id, None)
+    data_dict['image_fps'] = parse_image_fullpaths(data_dict["stimulus_names"], [imgdir_shared, imgdir])
     image_fps = data_dict['image_fps']
     resp_mat = data_dict['resp_mat']
     reliability = data_dict['reliability']
@@ -80,9 +87,7 @@ for subject_id in ['paul_240713-240710',
         th.save(fit_models_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_fitmodels_RidgeCV.pth")) 
         # th.save(Xtfmer_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"))
         # pkl.dump(Xtfmer_lyrswp, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"), "wb"))
-
         # %%
-        
         figh = plot_result_df_per_layer(result_df_lyrswp, )
         figh.suptitle(f"{subject_id} {modelname} layer sweep")
         figh.tight_layout()
