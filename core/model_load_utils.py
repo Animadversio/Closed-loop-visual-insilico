@@ -34,6 +34,17 @@ def load_model_transform(modelname, device="cuda"):
             T.Resize((224, 224)),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
+    elif modelname == "clipag_vitb32":
+        import open_clip
+        from os.path import join
+        ckpt_dir = '/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/model_backbones'
+        data = torch.load(join(ckpt_dir, 'CLIPAG_ViTB32.pt'), map_location='cpu')
+        data = data['state_dict']
+        data = {k.replace('module.', ''): v for k, v in data.items()}
+        model_clip, _, transforms_pipeline = open_clip.create_model_and_transforms('ViT-B/32',device="cuda")
+        model_clip.load_state_dict(data)
+        model = model_clip.visual
+        # tokenizer = open_clip.get_tokenizer('ViT-B-32')
     else:
         raise ValueError(f"Unknown model: {modelname}")
         # model = timm.create_model(modelname, pretrained=True).to(device).eval()
