@@ -50,7 +50,7 @@ def format_result_df(result_df):
     result_df_formatted = result_df.reset_index()
     result_df_formatted.rename(columns={"level_0": "layer_dimred", "level_1": "regressor", }, inplace=True)
     result_df_formatted["layer"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[0])
-    result_df_formatted["dimred"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[-1])
+    result_df_formatted["dimred"] = result_df_formatted["layer_dimred"].apply(lambda x: "_".join(x.split("_")[1:]))
     return result_df_formatted
 
 
