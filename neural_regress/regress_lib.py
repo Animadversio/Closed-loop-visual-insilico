@@ -410,7 +410,7 @@ def sp_cent_transform(x):
 
 def transform_features2Xdict(feat_dict, layer_names=None, 
                              dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                             pretrained_Xtransforms={}, use_pca_dual=True):
+                             pretrained_Xtransforms={}, use_pca_dual=True, use_srp_torch=True):
     # now we use pca dual solver by default, changing default behavior. 
     Xdict = {}
     tfm_dict = {}
@@ -437,24 +437,22 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                 Xdict.update({f"{layerkey}_{dimred}": featmat_pca})
                 tfm_dict.update({f"{layerkey}_{dimred}": pca_transformer})
                 X_shape = featmat_pca.shape
-            elif dimred == "srp":
-                if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
-                    srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
-                    featmat_srp = srp_transformer.transform(featmat)
-                else:
-                    srp_transformer = SparseRandomProjection()
-                    featmat_srp = srp_transformer.fit_transform(featmat)
-                Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
-                tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
-                X_shape = featmat_srp.shape
             elif dimred.startswith("srp"):
-                n_components = int(dimred.split("srp")[-1])
+                if dimred == "srp":
+                    n_components = "auto"
+                else:
+                    n_components = int(dimred.split("srp")[-1])
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
                     srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
                     featmat_srp = srp_transformer.transform(featmat)
                 else:
-                    srp_transformer = SparseRandomProjection(n_components=n_components)
-                    featmat_srp = srp_transformer.fit_transform(featmat)
+                    if use_srp_torch:
+                        from neural_regress.SRP_torch_lib import SparseRandomProjection_fit_transform_torch
+                        srp_transformer, featmat_srp = SparseRandomProjection_fit_transform_torch(featmat, 
+                                n_components=n_components, eps=0.1, random_state=42, device="cuda")
+                    else:
+                        srp_transformer = SparseRandomProjection(n_components=n_components)
+                        featmat_srp = srp_transformer.fit_transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_srp})
                 tfm_dict.update({f"{layerkey}_{dimred}": srp_transformer})
                 X_shape = featmat_srp.shape
