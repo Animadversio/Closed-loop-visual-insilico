@@ -676,8 +676,6 @@ def record_features(model, fetcher, dataset, batch_size=20, device="cuda"):
     return feat_col
 
 
-
-
 def compute_D2_per_unit(rspavg_resp_peak, rspavg_pred):
     return 1 - np.square(rspavg_resp_peak - rspavg_pred).sum(axis=0) / np.square(rspavg_resp_peak - rspavg_resp_peak.mean(axis=0)).sum(axis=0)
 
