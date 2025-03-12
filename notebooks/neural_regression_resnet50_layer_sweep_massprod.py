@@ -19,6 +19,7 @@ from circuit_toolkit.plot_utils import saveallforms
 from core.data_utils import load_neural_data, load_from_hdf5, parse_image_fullpaths
 from core.model_load_utils import load_model_transform
 from neural_regress.regress_lib import record_features, perform_regression_sweeplayer, perform_regression_sweeplayer_RidgeCV
+from neural_regress.regress_lib import sweep_regressors, transform_features2Xdict, RidgeCV
 from neural_regress.regress_eval_lib import format_result_df, plot_result_df_per_layer, construct_result_df_masked, \
     compute_pred_dict_D2_per_unit
 #%%
@@ -49,7 +50,7 @@ for subject_id in ['red_20241212-20241220', ]:
     resp_mat = data_dict['resp_mat']
     reliability = data_dict['reliability']
     ncsnr = data_dict['ncsnr']
-    figdir = join(dataroot, subject_id, "model_outputs")
+    figdir = join(dataroot, subject_id, "model_outputs_srp_test")
     os.makedirs(figdir, exist_ok=True)
     #%%
     batch_size = 96
@@ -72,14 +73,21 @@ for subject_id in ['red_20241212-20241220', ]:
         #%%
         resp_mat_sel = resp_mat[:, :]
         print(f"Fitting models for All channels N={resp_mat_sel.shape[1]}")
-        # result_df_lyrswp, fit_models_lyrswp, Xdict_lyrswp, Xtfmer_lyrswp = perform_regression_sweeplayer(feat_dict_lyrswp, 
-        #             resp_mat_sel, layer_names=module_names, # 'layer2', 'layer3', 
-        #             regressor_list=["Ridge",], dimred_list=["pca1000", "srp", "srp1000", "srp2000"], verbose=True) # "sp_cent", "sp_avg", 
-        result_df_lyrswp, fit_models_lyrswp, Xdict_lyrswp, Xtfmer_lyrswp = perform_regression_sweeplayer_RidgeCV(feat_dict_lyrswp, 
-                    resp_mat_sel, layer_names=module_names, alpha_per_target=True, 
-                    alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
-                    dimred_list=["pca1000", "srp", "srp1000",], verbose=True, use_pca_dual=True) # "sp_cent", "sp_avg", regressor_list=["Ridge",], 
-
+        # result_df_lyrswp, fit_models_lyrswp, Xdict_lyrswp, Xtfmer_lyrswp = perform_regression_sweeplayer_RidgeCV(feat_dict_lyrswp, 
+        #             resp_mat_sel, layer_names=module_names, alpha_per_target=True, 
+        #             alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
+        #             dimred_list=["pca1000", "srp", "srp1000",], verbose=True, use_pca_dual=True, use_srp_torch=True) # "sp_cent", "sp_avg", regressor_list=["Ridge",], 
+        Xdict_lyrswp, Xtfmer_lyrswp = transform_features2Xdict(feat_dict_lyrswp, module_names, 
+                                dimred_list=["pca1000", "srp", "srp1000",],  #  "srp"
+                                pretrained_Xtransforms={}, use_pca_dual=True, use_srp_torch=True)
+        regressors = [RidgeCV(alphas=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9], 
+                            alpha_per_target=True,),
+                    # MultiTaskLassoCV(cv=5, n_alphas=100, n_jobs=-1, max_iter=10000, tol=1E-4), 
+                    # MultiOutputSeparateLassoCV(cv=5, n_alphas=100, n_jobs=-1, max_iter=10000, tol=1E-4), 
+                    ] 
+        regressor_names = ["RidgeCV"]
+        result_df_lyrswp, fit_models_lyrswp = sweep_regressors(Xdict_lyrswp, resp_mat_sel, regressors, regressor_names, 
+                                                            verbose=True)
         pred_D2_dict = compute_pred_dict_D2_per_unit(fit_models_lyrswp, Xdict_lyrswp, resp_mat_sel)
         pkl.dump(pred_D2_dict, 
                 open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_pred_meta.pkl"), "wb"))
