@@ -82,7 +82,6 @@ def plot_result_df_per_layer(result_df, shorten_func=None):
     plt.title("Test R2")
 
     plt.tight_layout()
-    plt.show()
     return fig
 
 

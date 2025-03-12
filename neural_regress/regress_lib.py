@@ -448,7 +448,7 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                 else:
                     if use_srp_torch:
                         from neural_regress.SRP_torch_lib import SparseRandomProjection_fit_transform_torch
-                        srp_transformer, featmat_srp = SparseRandomProjection_fit_transform_torch(featmat, 
+                        featmat_srp, srp_transformer = SparseRandomProjection_fit_transform_torch(featmat, 
                                 n_components=n_components, eps=0.1, random_state=42, device="cuda")
                     else:
                         srp_transformer = SparseRandomProjection(n_components=n_components)
