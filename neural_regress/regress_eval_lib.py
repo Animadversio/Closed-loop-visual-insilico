@@ -46,11 +46,18 @@ def compute_pred_dict_D2_per_unit(fit_models_sweep, Xdict,
     
     
 def format_result_df(result_df):
-    # format the result_df to be a dataframe with layer, dimred, regressor, train_score, test_score, parse the key index as layer_dimred, regressor
-    result_df_formatted = result_df.reset_index()
-    result_df_formatted.rename(columns={"level_0": "layer_dimred", "level_1": "regressor", }, inplace=True)
+    # format the result_df to be a dataframe with layer, dimred, regressor, train_score, test_score, parse the key index as layer_dimred, regressor , if it has column unnamed then rename it to layer_dimred, regressor
+    """ if index is a multi-index, parse it as layer_dimred, regressor , if it has column unnamed then rename it to layer_dimred, regressor
+    The latter case if possible when the frame is loaded from a csv file. 
+    """
+    if isinstance(result_df.index, pd.MultiIndex):
+        result_df_formatted = result_df.reset_index()
+        result_df_formatted.rename(columns={"level_0": "layer_dimred", "level_1": "regressor", }, inplace=True)
+    else:
+        result_df_formatted = result_df
+        result_df_formatted.rename(columns={"Unnamed: 0": "layer_dimred", "Unnamed: 1": "regressor", }, inplace=True)
     result_df_formatted["layer"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[0])
-    result_df_formatted["dimred"] = result_df_formatted["layer_dimred"].apply(lambda x: "_".join(x.split("_")[1:]))
+    result_df_formatted["dimred"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[-1])
     return result_df_formatted
 
 

@@ -199,6 +199,8 @@ def SparseRandomProjection_fit_transform_torch(X, n_components="auto", eps=0.1,
     # transform the data, using sparse matrix multiplication with torch
     featmat = torch.sparse.mm(X.float().to(device), projection_matrix.T).to("cpu") # note some x are half precision
     srp_sklearn = torch_to_sklearn_projection(projection_matrix, n_components)
+    del projection_matrix
+    torch.cuda.empty_cache()
     return featmat, srp_sklearn
 
 
