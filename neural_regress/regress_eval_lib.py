@@ -68,7 +68,10 @@ def plot_result_df_per_layer(result_df, shorten_func=None):
     """
     if shorten_func is None:
         shorten_func = lambda x: x.replace("Bottleneck", "B").replace(".layer", "L")
-    result_df_formatted = format_result_df(result_df)
+    if "layer" not in result_df.columns and "dimred" not in result_df.columns:
+        result_df_formatted = format_result_df(result_df)
+    else:
+        result_df_formatted = result_df
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     plt.sca(axs[0])
     sns.lineplot(data=result_df_formatted, x="layer", 
