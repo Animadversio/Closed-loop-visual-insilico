@@ -423,6 +423,7 @@ def transform_features2Xdict(feat_dict, layer_names=None,
         for dimred in dimred_list:
             time_dimred = time.time()
             if dimred.startswith("pca"):
+                # TODO: if there is multiple PCA dimred str, we can perform PCA only once and used the cached results and chuncage the columns. 
                 n_components = int(dimred.split("pca")[-1])
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
                     pca_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]

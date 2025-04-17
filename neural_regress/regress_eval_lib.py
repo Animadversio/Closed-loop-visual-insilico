@@ -45,7 +45,8 @@ def compute_pred_dict_D2_per_unit(fit_models_sweep, Xdict,
     # }, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_pred_meta.pkl"), "wb"))
     
     
-def format_result_df(result_df):
+
+def format_result_df(result_df, dimred_list=()):
     # format the result_df to be a dataframe with layer, dimred, regressor, train_score, test_score, parse the key index as layer_dimred, regressor , if it has column unnamed then rename it to layer_dimred, regressor
     """ if index is a multi-index, parse it as layer_dimred, regressor , if it has column unnamed then rename it to layer_dimred, regressor
     The latter case if possible when the frame is loaded from a csv file. 
@@ -56,23 +57,33 @@ def format_result_df(result_df):
     else:
         result_df_formatted = result_df
         result_df_formatted.rename(columns={"Unnamed: 0": "layer_dimred", "Unnamed: 1": "regressor", }, inplace=True)
-    result_df_formatted["layer"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[0])
-    result_df_formatted["dimred"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[-1])
+    
+    def split_layer_dimred(x, dimred_list):
+        for dimred in dimred_list:
+            if x.endswith(dimred):
+                # Split at the last _ before the dimred
+                prefix = x[:-len(dimred)-1] # Remove dimred and the _
+                return prefix, dimred
+        raise ValueError(f"Could not find any matching dimred type in {dimred_list} for {x}")
+    
+    if not len(dimred_list) == 0:
+        result_df_formatted["layer"], result_df_formatted["dimred"] = zip(*result_df_formatted["layer_dimred"].apply(lambda x: split_layer_dimred(x, dimred_list)))
+    else:
+        result_df_formatted["layer"] = result_df_formatted["layer_dimred"].apply(lambda x: x.split("_")[0])
+        result_df_formatted["dimred"] = result_df_formatted["layer_dimred"].apply(lambda x: "_".join(x.split("_")[1:]))
     return result_df_formatted
 
 
-def plot_result_df_per_layer(result_df, shorten_func=None):
+def plot_result_df_per_layer(result_df, shorten_func=None, dimred_list=[], sharey=False, ylim=(None, None), grid=False):
     """
     Plot the result_df per layer, separated by train and test scores; 
     each line is a different dimred x regressor pair
     """
     if shorten_func is None:
         shorten_func = lambda x: x.replace("Bottleneck", "B").replace(".layer", "L")
-    if "layer" not in result_df.columns and "dimred" not in result_df.columns:
-        result_df_formatted = format_result_df(result_df)
-    else:
-        result_df_formatted = result_df
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    
+    result_df_formatted = format_result_df(result_df, dimred_list)
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5), sharey=sharey)
     plt.sca(axs[0])
     sns.lineplot(data=result_df_formatted, x="layer", 
                 y="train_score", style="regressor", hue="dimred", ax=axs[0], marker="o")
@@ -81,7 +92,9 @@ def plot_result_df_per_layer(result_df, shorten_func=None):
     xticklabels = [shorten_func(label.get_text()) for label in xticklabels]
     plt.xticks(ticks=range(len(xticklabels)), labels=xticklabels, rotation=45)
     plt.title("Training R2")
-
+    plt.ylim(ylim[0], ylim[1])
+    axs[0].grid(grid)
+    
     plt.sca(axs[1])
     sns.lineplot(data=result_df_formatted, x="layer", 
                 y="test_score", style="regressor", hue="dimred", ax=axs[1], marker="o")
@@ -90,7 +103,8 @@ def plot_result_df_per_layer(result_df, shorten_func=None):
     xticklabels = [shorten_func(label.get_text()) for label in xticklabels]
     plt.xticks(ticks=range(len(xticklabels)), labels=xticklabels, rotation=45)
     plt.title("Test R2")
-
+    plt.ylim(ylim[0], ylim[1])
+    axs[1].grid(grid)
     plt.tight_layout()
     return fig
 
