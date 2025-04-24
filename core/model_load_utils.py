@@ -45,6 +45,27 @@ def load_model_transform(modelname, device="cuda"):
         model_clip.load_state_dict(data)
         model = model_clip.visual
         # tokenizer = open_clip.get_tokenizer('ViT-B-32')
+    elif modelname == "siglip2_vitb16":
+        import open_clip
+        siglip_model, transforms_pipeline = open_clip.create_model_from_pretrained('hf-hub:timm/ViT-B-16-SigLIP2')
+        model = siglip_model.visual
+    elif modelname == "dinov2_vitb14_reg":
+        model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg')
+        transforms_pipeline = T.Compose([
+            T.ToTensor(),
+            T.Resize((224, 224)),
+            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+    elif modelname == "radio_v2.5-b":
+        # for RADIOv2.5-B model (ViT-B/16)
+        resolution = (224, 224)
+        #model_version="e-radio_v2" # for E-RADIO
+        model = torch.hub.load('NVlabs/RADIO', 'radio_model', version="radio_v2.5-b", progress=True, skip_validation=True)
+        transforms_pipeline = T.Compose([
+            T.ToTensor(),
+            T.Resize((224, 224)),
+            # T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
     else:
         raise ValueError(f"Unknown model: {modelname}")
         # model = timm.create_model(modelname, pretrained=True).to(device).eval()
@@ -52,5 +73,57 @@ def load_model_transform(modelname, device="cuda"):
         # transforms_pipeline = timm.data.create_transform(**data_config, is_training=False)
     model = model.to(device).eval()
     model.requires_grad_(False)
-    
     return model, transforms_pipeline
+
+
+def make_keyword_filter(*substrs):
+    return lambda name: any(s in name for s in substrs)
+
+
+# define, once, the patterns you care about per model
+MODEL_LAYER_FILTERS = {
+    "siglip2_vitb16":      make_keyword_filter(".trunk.blocks.Block", ".trunk.AttentionPoolLatentattn_pool"),
+    "dinov2_vitb14_reg":   make_keyword_filter(".blocks.NestedTensorBlock"),
+    "radio_v2.5-b":        make_keyword_filter(".model.blocks.Block"),
+    "clipag_vitb32":       make_keyword_filter("ResidualAttentionBlock"),
+    # all the ResNet-50 variants use the same Bottleneck block
+    "resnet50_clip":       make_keyword_filter("Bottleneck"),
+    "resnet50_dino":       make_keyword_filter("Bottleneck"),
+    "resnet50_robust":     make_keyword_filter("Bottleneck"),
+    "resnet50":            make_keyword_filter("Bottleneck"),
+}
+
+# OLDER VERSION
+# if modelname == "siglip2_vitb16":
+#     layer_filter = lambda name: ".trunk.blocks.Block" in name or ".trunk.AttentionPoolLatentattn_pool" in name
+#     # module_names = [name for name in fetcher.module_names.values()   if ".trunk.blocks.Block" in name or ".trunk.AttentionPoolLatentattn_pool" in name]
+# elif modelname == "dinov2_vitb14_reg":
+#     layer_filter = lambda name: ".blocks.NestedTensorBlock" in name
+#     # module_names = [name for name in fetcher.module_names.values() if ".blocks.NestedTensorBlock" in name]
+# elif modelname == "radio_v2.5-b":
+#     layer_filter = lambda name: ".model.blocks.Block" in name
+#     # module_names = [name for name in fetcher.module_names.values() if ".model.blocks.Block" in name]
+# elif modelname == "clipag_vitb32":
+#     layer_filter = lambda name: "ResidualAttentionBlock" in name
+#     # module_names = [name for name in fetcher.module_names.values() if "ResidualAttentionBlock" in name]
+# elif modelname == "resnet50_clip":
+#     layer_filter = lambda name: "Bottleneck" in name
+#     # module_names = [name for name in fetcher.module_names.values() if "Bottleneck" in name]
+# elif modelname == "resnet50_dino":
+#     layer_filter = lambda name: "Bottleneck" in name
+#     # module_names = [name for name in fetcher.module_names.values() if "Bottleneck" in name]
+# elif modelname == "resnet50_robust":
+#     layer_filter = lambda name: "Bottleneck" in name
+#     # module_names = [name for name in fetcher.module_names.values() if "Bottleneck" in name]
+# elif modelname == "resnet50":
+#     layer_filter = lambda name: "Bottleneck" in name
+#     # module_names = [name for name in fetcher.module_names.values() if "Bottleneck" in name]
+# else:
+#     raise ValueError(f"Unknown model: {modelname}")
+
+
+
+
+
+
+

@@ -24,19 +24,21 @@ from neural_regress.regress_eval_lib import format_result_df, plot_result_df_per
     compute_pred_dict_D2_per_unit
 #%%
 device = "cuda" if th.cuda.is_available() else "cpu"
-dataroot = r"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation"
+outputroot = r"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation"
 
 stimuli_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Stimuli"
 imgdir_shared = join(stimuli_root, "shared1000")
 imgdir = join(stimuli_root, "stimuli_pilot_20241119/results")
+
 ephys_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Ephys_Data"
 data_path = join(ephys_root, "vvs-accentuate-day1_normalize_red_20241212-20241220.h5")
 # data_path = join(ephys_root, "nsd_shared1000_6monkeys_2024.h5")
-
 # Load data
 data = load_from_hdf5(data_path)
 print("subjects:", list(data.keys()))
 #%%
+batch_size = 96
+output_name = "model_outputs_srp_test"
 # for subject_id in ['paul_240713-240710', 
 #                    'paul_20240713-20240710', 
 #                    'red_20240713-20240710',
@@ -50,10 +52,9 @@ for subject_id in ['red_20241212-20241220', ]:
     resp_mat = data_dict['resp_mat']
     reliability = data_dict['reliability']
     ncsnr = data_dict['ncsnr']
-    figdir = join(dataroot, subject_id, "model_outputs_srp_test")
+    figdir = join(outputroot, subject_id, output_name)
     os.makedirs(figdir, exist_ok=True)
     #%%
-    batch_size = 96
     # modelname = "resnet50"
     for modelname in ["resnet50_clip", "resnet50_dino", "resnet50", "resnet50_robust", ]: # 
         model, transforms_pipeline = load_model_transform(modelname, device=device)
@@ -61,6 +62,7 @@ for subject_id in ['red_20241212-20241220', ]:
         dataset = ImagePathDataset(image_fps, scores=resp_mat, transform=transforms_pipeline)
         # Prepare fetcher
         fetcher = featureFetcher(model, input_size=(3, 224, 224), print_module=False)
+        # Select the major layers
         module_names = [name for name in fetcher.module_names.values() if "Bottleneck" in name]
         # Add hooks to all layers / blocks in resnet50
         for name in module_names: 
@@ -71,12 +73,8 @@ for subject_id in ['red_20241212-20241220', ]:
         fetcher.cleanup()
         th.cuda.empty_cache()
         #%%
-        resp_mat_sel = resp_mat[:, :]
+        resp_mat_sel = resp_mat[:, :] # Select all channels, no mask
         print(f"Fitting models for All channels N={resp_mat_sel.shape[1]}")
-        # result_df_lyrswp, fit_models_lyrswp, Xdict_lyrswp, Xtfmer_lyrswp = perform_regression_sweeplayer_RidgeCV(feat_dict_lyrswp, 
-        #             resp_mat_sel, layer_names=module_names, alpha_per_target=True, 
-        #             alpha_list=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9],
-        #             dimred_list=["pca1000", "srp", "srp1000",], verbose=True, use_pca_dual=True, use_srp_torch=True) # "sp_cent", "sp_avg", regressor_list=["Ridge",], 
         Xdict_lyrswp, Xtfmer_lyrswp = transform_features2Xdict(feat_dict_lyrswp, module_names, 
                                 dimred_list=["pca1000", "srp", "srp1000",],  #  "srp"
                                 pretrained_Xtransforms={}, use_pca_dual=True, use_srp_torch=True)
