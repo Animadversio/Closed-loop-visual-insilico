@@ -93,6 +93,17 @@ MODEL_LAYER_FILTERS = {
     "resnet50":            make_keyword_filter("Bottleneck"),
 }
 
+
+LAYER_ABBREVIATION_MAPS = {
+    "siglip2_vitb16":      lambda layername: layername.replace(".trunk.blocks.Block", "B").replace(".trunk.AttentionPoolLatentattn_pool", "attnpool"),
+    "dinov2_vitb14_reg":   lambda layername: layername.replace(".blocks.NestedTensorBlock", "B"),
+    "radio_v2.5-b":        lambda layername: layername.replace(".model.blocks.Block", "B"),
+    "clipag_vitb32":       lambda layername: layername.replace(".transformer.resblocks.ResidualAttentionBlock", "B"),
+    "resnet50_clip":       lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "resnet50_dino":       lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "resnet50_robust":     lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "resnet50":            lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+}
 # OLDER VERSION
 # if modelname == "siglip2_vitb16":
 #     layer_filter = lambda name: ".trunk.blocks.Block" in name or ".trunk.AttentionPoolLatentattn_pool" in name
