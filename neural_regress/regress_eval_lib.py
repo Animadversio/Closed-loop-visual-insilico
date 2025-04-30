@@ -20,17 +20,22 @@ def compute_pred_dict_D2_per_unit(fit_models_sweep, Xdict,
     D2_per_unit_train_dict = {}
     D2_per_unit_test_dict = {}
     D2_per_unit_dict = {}
-    for (model_dimred, regressor) in fit_models_sweep.keys():
-        fit_model = fit_models_sweep[(model_dimred, regressor)]
-        Xfeat = Xdict[(model_dimred)]
+    for key in fit_models_sweep.keys():
+        if len(key) == 3:
+            (model_layer, dimred_str, label) = key
+            model_dimred = (model_layer, dimred_str)
+        elif len(key) == 2:
+            (model_dimred, regressor) = key
+        fit_model = fit_models_sweep[key]
+        Xfeat = Xdict[model_dimred]
         # Xfeat_tfmer = Xtfmer_lyrswp_RidgeCV[(model_dimred)]
         rspavg_pred = fit_model.predict(Xfeat)
-        pred_dict[(model_dimred, regressor)] = rspavg_pred
+        pred_dict[key] = rspavg_pred
         D2_per_unit = compute_D2_per_unit(resp_mat_sel, rspavg_pred)
         D2_per_unit_train = compute_D2_per_unit(resp_mat_sel[idx_train], rspavg_pred[idx_train])
         D2_per_unit_test = compute_D2_per_unit(resp_mat_sel[idx_test], rspavg_pred[idx_test])
-        D2_per_unit_train_dict[(model_dimred, regressor)] = D2_per_unit_train
-        D2_per_unit_test_dict[(model_dimred, regressor)] = D2_per_unit_test
+        D2_per_unit_train_dict[key] = D2_per_unit_train
+        D2_per_unit_test_dict[key] = D2_per_unit_test
     return {
         "pred_dict": pred_dict,
         "D2_per_unit_dict": D2_per_unit_dict,
@@ -44,17 +49,59 @@ def compute_pred_dict_D2_per_unit(fit_models_sweep, Xdict,
     #     "D2_per_unit_test_dict": D2_per_unit_test_dict,
     # }, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_pred_meta.pkl"), "wb"))
     
+
+def is_nested_index_of_form(df):
+    if not isinstance(df.index, pd.MultiIndex):
+        return False
+    first_index_entry = df.index[0]
+    return (
+        isinstance(first_index_entry, tuple) and
+        len(first_index_entry) == 2 and
+        isinstance(first_index_entry[0], tuple) and
+        len(first_index_entry[0]) == 2
+    )
     
+
+def format_result_df_tuple_index(result_df_lyrswp, ):
+    # Assume result_df_lyrswp is your DataFrame
+    result_df_lyrswp = result_df_lyrswp.copy()  # avoid modifying in-place if needed
+    # Step 1: Convert MultiIndex to DataFrame
+    index_df = result_df_lyrswp.index.to_frame(index=False)
+    # Step 2: Split the nested tuple in the first column into two separate columns
+    index_df[['layer', 'dimred']] = pd.DataFrame(index_df[0].tolist(), index=index_df.index)
+    # Step 3: Add the 'regressor' column and drop the original nested tuple column
+    index_df['regressor'] = index_df[1]
+    index_df = index_df.drop(columns=[0, 1])
+    # Step 3.5: Create a 'layer_dimred' column by joining 'layer' and 'dimred' with an underscore
+    index_df['layer_dimred'] = index_df['layer'] + '_' + index_df['dimred']
+    # Step 4: Join with the original data
+    # result_df_lyrswp = result_df_lyrswp.reset_index(drop=True).join(index_df)
+    result_df_lyrswp = index_df.join(result_df_lyrswp.reset_index(drop=True))
+    return result_df_lyrswp
+
 
 def format_result_df(result_df, dimred_list=()):
     # format the result_df to be a dataframe with layer, dimred, regressor, train_score, test_score, parse the key index as layer_dimred, regressor , if it has column unnamed then rename it to layer_dimred, regressor
     """ if index is a multi-index, parse it as layer_dimred, regressor , if it has column unnamed then rename it to layer_dimred, regressor
     The latter case if possible when the frame is loaded from a csv file. 
     """
+    
+    if "layer" in result_df.columns and "dimred" in result_df.columns and "regressor" in result_df.columns:
+        print("already formatted, pass")
+        return result_df
+    
+    if is_nested_index_of_form(result_df):
+        # this is the simple case, the first entry is a tuple, then we can easily parse it 
+        result_df_formatted = format_result_df_tuple_index(result_df)
+        return result_df_formatted
+    
+    # otherwise, we need to parse the index  into layer and dimred 
+    # first check if the index is a multi-index
     if isinstance(result_df.index, pd.MultiIndex):
         result_df_formatted = result_df.reset_index()
         result_df_formatted.rename(columns={"level_0": "layer_dimred", "level_1": "regressor", }, inplace=True)
     else:
+        # usually this is the case when the frame is loaded from a csv file
         result_df_formatted = result_df
         result_df_formatted.rename(columns={"Unnamed: 0": "layer_dimred", "Unnamed: 1": "regressor", }, inplace=True)
     

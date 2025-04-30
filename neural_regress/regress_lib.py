@@ -211,9 +211,16 @@ def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_
             D2_train = clf.score(X_train, y_train)
             D2_test = clf.score(X_test, y_test)
             end_time = time.time()
+            # if isinstance(xtype, tuple):
+            #     result_summary[(*xtype, label)] = \
+            #         {"alpha": alpha, "train_score": D2_train, "test_score": D2_test, "n_feat": nfeat, "runtime": end_time - start_time}
+            #     models[(*xtype, label)] = clf
+            # elif isinstance(xtype, str):
             result_summary[(xtype, label)] = \
                 {"alpha": alpha, "train_score": D2_train, "test_score": D2_test, "n_feat": nfeat, "runtime": end_time - start_time}
             models[(xtype, label)] = clf
+            # else:
+            #     raise ValueError(f"Unknown input type: {xtype}")
             if verbose:
                 print(f"{xtype} {label} D2_train: {D2_train:.3f} D2_test: {D2_test:.3f} time: {end_time - start_time:.3f}")
 
@@ -505,6 +512,141 @@ def transform_features2Xdict(feat_dict, layer_names=None,
         print(f"Time taken to transform {layerkey}: {time.time() - time_feat_tsr:.3f}s")
     print(f"Time taken to transform all features: {time.time() - time_start:.3f}s")
     return Xdict, tfm_dict
+
+
+
+def transform_features2Xdict_new(feat_dict, layer_names=None, 
+                             dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
+                             pretrained_Xtransforms={}, use_pca_dual=True, use_srp_torch=True,
+                             train_split_idx=None):
+    # now we use pca dual solver by default, changing default behavior. 
+    Xdict = {}
+    tfm_dict = {}
+    time_start = time.time()
+    for layerkey in feat_dict.keys() if layer_names is None else layer_names:
+        feat_tsr = feat_dict[layerkey]
+        time_feat_tsr = time.time()
+        print(layerkey, feat_tsr.shape, )
+        featmat = feat_tsr.flatten(start_dim=1)
+        if train_split_idx is not None:
+            featmat_train = featmat[train_split_idx, :]
+        else:
+            featmat_train = featmat
+        
+        for dimred in dimred_list:
+            time_dimred = time.time()
+            if dimred.startswith("pca"):
+                # TODO: if there is multiple PCA dimred str, we can perform PCA only once and used the cached results and chuncage the columns. 
+                n_components = int(dimred.split("pca")[-1])
+                if (layerkey, dimred) in pretrained_Xtransforms:
+                    # use pretrained PCA transformer
+                    pca_transformer = pretrained_Xtransforms[(layerkey, dimred)]
+                    featmat_pca = pca_transformer.transform(featmat)
+                else:
+                    # fit PCA transformer on training set
+                    if use_pca_dual:
+                        from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform
+                        pca_transformer, featmat_pca_ = pca_dual_fit_transform(featmat_train, n_components, device='cuda')
+                        featmat_pca = pca_transformer.transform(featmat)
+                    else:
+                        pca_transformer = PCA(n_components=n_components)
+                        pca_transformer.fit(featmat_train)
+                        featmat_pca = pca_transformer.transform(featmat)
+                Xdict.update({(layerkey, dimred): featmat_pca})
+                tfm_dict.update({(layerkey, dimred): pca_transformer})
+                X_shape = featmat_pca.shape
+            elif dimred.startswith("srp"):
+                if dimred == "srp":
+                    n_components = "auto"
+                else:
+                    n_components = int(dimred.split("srp")[-1])
+                if (layerkey, dimred) in pretrained_Xtransforms:
+                    # use pretrained SRP transformer
+                    srp_transformer = pretrained_Xtransforms[(layerkey, dimred)]
+                    featmat_srp = srp_transformer.transform(featmat)
+                else:
+                    # fit SRP transformer on training set
+                    if use_srp_torch:
+                        from neural_regress.SRP_torch_lib import SparseRandomProjection_fit_transform_torch
+                        featmat_srp, srp_transformer = SparseRandomProjection_fit_transform_torch(featmat, 
+                                n_components=n_components, eps=0.1, random_state=42, device="cuda")
+                    else:
+                        srp_transformer = SparseRandomProjection(n_components=n_components)
+                        featmat_srp = srp_transformer.fit_transform(featmat)
+                Xdict.update({(layerkey, dimred): featmat_srp})
+                tfm_dict.update({(layerkey, dimred): srp_transformer})
+                X_shape = featmat_srp.shape
+            elif dimred == "sp_avg":
+                featmat_avg = feat_tsr.mean(dim=(2, 3))  # B x C
+                Xdict.update({(layerkey, dimred): featmat_avg})
+                tfm_dict.update({(layerkey, dimred): sp_avg_transform})
+                X_shape = featmat_avg.shape
+            elif dimred == "sp_cent":
+                centpos = (feat_tsr.shape[2] // 2, feat_tsr.shape[3] // 2)
+                featmat_cent = feat_tsr[:, :, centpos[0]:centpos[0]+1, centpos[1]:centpos[1]+1].mean(dim=(2,3))  # B x n_components
+                Xdict.update({(layerkey, dimred): featmat_cent})
+                tfm_dict.update({(layerkey, dimred): sp_cent_transform})
+                X_shape = featmat_cent.shape
+            elif dimred == "avgtoken":
+                featmat_avg = feat_tsr.mean(dim=(1))  # B x C
+                Xdict.update({(layerkey, dimred): featmat_avg})
+                tfm_dict.update({(layerkey, dimred): avgtoken_transform})
+                X_shape = featmat_avg.shape
+            elif dimred == "clstoken":
+                featmat_cls = feat_tsr[:, 0, :]  # B x C
+                Xdict.update({(layerkey, dimred): featmat_cls})
+                tfm_dict.update({(layerkey, dimred): clstoken_transform})
+                X_shape = featmat_cls.shape
+            elif dimred == "full":
+                Xdict.update({(layerkey, dimred): featmat})
+                tfm_dict.update({(layerkey, dimred): flatten_transform})
+                X_shape = featmat.shape
+            else:
+                raise ValueError(f"Unknown dimension reduction method: {dimred}")
+            print(f"Time taken to transform {layerkey} {dimred} {list(X_shape)}: {time.time() - time_dimred:.3f}s")
+        print(f"Time taken to transform {layerkey}: {time.time() - time_feat_tsr:.3f}s")
+    print(f"Time taken to transform all features: {time.time() - time_start:.3f}s")
+    return Xdict, tfm_dict
+
+
+
+
+def apply_feature_transforms(feat_dict_lyrswp, module_names2record, dimred_transform_dict, 
+                            layer_transform_filter=None):
+    """Apply feature transforms to each layer using the provided transform dictionary.
+    
+    Args:
+        feat_dict_lyrswp: Dictionary of features for each layer
+        module_names2record: List of layer names to process
+        dimred_transform_dict: Dictionary of transform modules
+        layer_transform_filter: Optional function that takes (layer_name, transform_name) 
+                               and returns True if the transform should be applied to that layer
+        
+    Returns:
+        Xdict_lyrswp: Dictionary of transformed features
+        Xtfmer_lyrswp: Dictionary of transform modules used
+    """
+    Xdict_lyrswp = {}
+    Xtfmer_lyrswp = {}
+    
+    # Default filter that allows all combinations
+    if layer_transform_filter is None:
+        # For backward compatibility with siglip2_vitb16 case
+        layer_transform_filter = lambda layer, dimred_str: not (("attn_pool" in layer) != ("full" in dimred_str))
+    
+    for layer in module_names2record:
+        for dimred_str, transform_module in dimred_transform_dict.items():
+            # Skip if the filter returns False
+            if not layer_transform_filter(layer, dimred_str):
+                continue
+            t0 = time.time()
+            Xdict_lyrswp[(layer, dimred_str)] = transform_module(feat_dict_lyrswp[layer])
+            Xtfmer_lyrswp[(layer, dimred_str)] = transform_module
+            print(f"Time taken to transform {layer} x {dimred_str}: {time.time() - t0:.3f}s")
+    
+    return Xdict_lyrswp, Xtfmer_lyrswp
+
+
 
 
 def perform_regression_sweeplayer(feat_dict, resp_mat, layer_names=None, 

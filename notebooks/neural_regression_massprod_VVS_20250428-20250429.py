@@ -29,8 +29,6 @@ from circuit_toolkit.plot_utils import to_imgrid, show_imgrid, save_imgrid, save
 from circuit_toolkit.layer_hook_utils import featureFetcher_module, featureFetcher, get_module_names
 from circuit_toolkit.dataset_utils import ImagePathDataset
 from torch.utils.data import DataLoader
-from neural_regress.regress_lib import sweep_regressors
-from neural_regress.sklearn_torchify_lib import SRP_torch, PCA_torch, LinearRegression_torch, SpatialAvg_torch
 
 import sklearn
 from sklearn.pipeline import make_pipeline
@@ -46,9 +44,11 @@ sys.path.append("/n/home12/binxuwang/Github/Closed-loop-visual-insilico")
 from core.model_load_utils import load_model_transform, MODEL_LAYER_FILTERS, LAYER_ABBREVIATION_MAPS
 from neural_regress.feature_reduction_lib import FEATURE_REDUCTION_DEFAULTS, LAYER_TRANSFORM_FILTERS
 from neural_regress.regress_lib import record_features, perform_regression_sweeplayer, perform_regression_sweeplayer_RidgeCV
-from neural_regress.regress_lib import sweep_regressors, transform_features2Xdict, RidgeCV
+from neural_regress.regress_lib import sweep_regressors, transform_features2Xdict_new, transform_features2Xdict, RidgeCV, apply_feature_transforms
 from neural_regress.regress_eval_lib import format_result_df, plot_result_df_per_layer, construct_result_df_masked, \
     compute_pred_dict_D2_per_unit
+from neural_regress.regress_lib import sweep_regressors
+from neural_regress.sklearn_torchify_lib import SRP_torch, PCA_torch, LinearRegression_torch, SpatialAvg_torch
 #%% Utility Functions
 from core.data_utils import load_from_hdf5, load_neural_data, load_neural_trial_resp_tensor, create_response_tensor, parse_image_fullpaths
 
@@ -93,43 +93,6 @@ model_names = [
 ]
 
 
-def apply_feature_transforms(feat_dict_lyrswp, module_names2record, dimred_transform_dict, 
-                            layer_transform_filter=None):
-    """Apply feature transforms to each layer using the provided transform dictionary.
-    
-    Args:
-        feat_dict_lyrswp: Dictionary of features for each layer
-        module_names2record: List of layer names to process
-        dimred_transform_dict: Dictionary of transform modules
-        layer_transform_filter: Optional function that takes (layer_name, transform_name) 
-                               and returns True if the transform should be applied to that layer
-        
-    Returns:
-        Xdict_lyrswp: Dictionary of transformed features
-        Xtfmer_lyrswp: Dictionary of transform modules used
-    """
-    Xdict_lyrswp = {}
-    Xtfmer_lyrswp = {}
-    
-    # Default filter that allows all combinations
-    if layer_transform_filter is None:
-        # For backward compatibility with siglip2_vitb16 case
-        layer_transform_filter = lambda layer, dimred_str: not (("attn_pool" in layer) != ("full" in dimred_str))
-    
-    for layer in module_names2record:
-        for dimred_str, transform_module in dimred_transform_dict.items():
-            # Skip if the filter returns False
-            if not layer_transform_filter(layer, dimred_str):
-                continue
-                
-            t0 = time.time()
-            Xdict_lyrswp[f"{layer}_{dimred_str}"] = transform_module(feat_dict_lyrswp[layer])
-            Xtfmer_lyrswp[f"{layer}_{dimred_str}"] = transform_module
-            print(f"Time taken to transform {layer} x {dimred_str}: {time.time() - t0:.3f}s")
-    
-    return Xdict_lyrswp, Xtfmer_lyrswp
-
-
 outputroot = r"/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Encoding_models"
 output_name = "model_outputs"
 figdir = join(outputroot, subject_id, output_name)
@@ -171,19 +134,21 @@ for modelname in model_names:
     print(f"{modelname} done!!!")
     
     fetcher.cleanup()
-    print(f"Applying feature reduction: {dimred_list}")
-    if modelname in FEATURE_REDUCTION_DEFAULTS and ("resnet" not in modelname):
+    if modelname in FEATURE_REDUCTION_DEFAULTS and not ("resnet" in modelname):
+        # ViT models using the default feature reduction, pretrained feature reduction
         dimred_transform_dict = FEATURE_REDUCTION_DEFAULTS[modelname](model)
         layer_transform_filter = LAYER_TRANSFORM_FILTERS[modelname]
         dimred_list = list(dimred_transform_dict.keys())
         Xdict_lyrswp, Xtfmer_lyrswp = apply_feature_transforms(
             feat_dict_lyrswp, module_names2record, dimred_transform_dict, layer_transform_filter)
     else:
+        # ResNet and other CNN models using the PCA / SRP feature reduction, pretrained feature reduction
         dimred_list = ["pca750", "srp", ]
-        Xdict_lyrswp, Xtfmer_lyrswp = transform_features2Xdict(feat_dict_lyrswp, module_names2record, 
+        Xdict_lyrswp, Xtfmer_lyrswp = transform_features2Xdict_new(feat_dict_lyrswp, module_names2record, 
                             dimred_list=dimred_list, pretrained_Xtransforms={}, #  "srp"
                             use_pca_dual=True, use_srp_torch=True, train_split_idx=train_idx)
     
+    print(f"Applied feature reduction: {dimred_list}")
     print(f"{len(Xdict_lyrswp)} features computed! ")
     
     resp_mat_sel = resp_mat[:, :] # Select all channels, no mask
@@ -200,10 +165,12 @@ for modelname in model_names:
     pred_D2_dict = compute_pred_dict_D2_per_unit(fit_models_lyrswp, Xdict_lyrswp, resp_mat_sel)
     pkl.dump(pred_D2_dict, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_pred_meta.pkl"), "wb"))
     result_df_lyrswp.to_csv(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_sweep_RidgeCV.csv"))
+    result_df_lyrswp.to_pickle(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_sweep_RidgeCV_df.pkl"))
     th.save(fit_models_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_fitmodels_RidgeCV.pth")) 
     # th.save(Xtfmer_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pth"))
     # pkl.dump(Xtfmer_lyrswp, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"), "wb"))
     # %%
+    result_df_lyrswp = format_result_df(result_df_lyrswp, dimred_list)
     figh = plot_result_df_per_layer(result_df_lyrswp, dimred_list=dimred_list, shorten_func=layer_abbrev, sharey=True, grid=True)
     figh.suptitle(f"{subject_id} {modelname} layer sweep")
     figh.tight_layout()
@@ -235,3 +202,17 @@ for modelname in model_names:
 
 
 
+def format_result_df_new(result_df_lyrswp, ):
+    # Assume result_df_lyrswp is your DataFrame
+    result_df_lyrswp = result_df_lyrswp.copy()  # avoid modifying in-place if needed
+    # Step 1: Convert MultiIndex to DataFrame
+    index_df = result_df_lyrswp.index.to_frame(index=False)
+    # Step 2: Split the nested tuple in the first column into two separate columns
+    index_df[['layer', 'dimred']] = pd.DataFrame(index_df[0].tolist(), index=index_df.index)
+    # Step 3: Add the 'regressor' column and drop the original nested tuple column
+    index_df['regressor'] = index_df[1]
+    index_df = index_df.drop(columns=[0, 1])
+    # Step 4: Join with the original data
+    # result_df_lyrswp = result_df_lyrswp.reset_index(drop=True).join(index_df)
+    result_df_lyrswp = index_df.join(result_df_lyrswp.reset_index(drop=True))
+    return result_df_lyrswp
