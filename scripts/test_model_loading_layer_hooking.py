@@ -75,7 +75,7 @@ def test_activation_recording(image_fps=None, batch_size=96):
         "clipag_vitb32",
         "siglip2_vitb16",
         "dinov2_vitb14_reg",
-        "radio_v2.5-b"
+        "radio_v2.5-b",
     ]
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
