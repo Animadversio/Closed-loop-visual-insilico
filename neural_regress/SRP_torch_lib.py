@@ -165,6 +165,8 @@ def SparseRandomProjection_fit_transform_torch(X, n_components="auto", eps=0.1,
     """
     Fit the sparse random matrix and transform the data.
     Using torch cuda operations to speed up the computation. Note it could be even slower if using CPU.
+    
+    Note if n_components is larger than n_features, we will return the original data. and a None transformer.
     """
     n_samples, n_features = X.shape
     # Determine the number of components
@@ -175,9 +177,8 @@ def SparseRandomProjection_fit_transform_torch(X, n_components="auto", eps=0.1,
                 "eps=%f and n_samples=%d lead to a target dimension of "
                 "%d which is invalid" % (eps, n_samples, n_components)
             )
-
         elif n_components > n_features:
-            raise ValueError(
+            warnings.warn(
                 "eps=%f and n_samples=%d lead to a target dimension of "
                 "%d which is larger than the original space with "
                 "n_features=%d"
@@ -192,6 +193,12 @@ def SparseRandomProjection_fit_transform_torch(X, n_components="auto", eps=0.1,
                 % (n_features, n_components),
                 DataDimensionalityWarning,
             )
+    
+    if n_components > n_features:
+        warnings.warn("Setting n_components to n_features and returning the original data")
+        n_components = n_features
+        return X, None
+    
     # construct the projection matrix, on device (potentially GPU)
     projection_matrix = _sparse_random_matrix_torch(n_components, n_features, density=density, 
                                                     random_state=random_state, 
