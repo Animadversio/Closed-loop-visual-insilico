@@ -114,6 +114,9 @@ MODEL_LAYER_FILTERS = {
     "resnet50":            make_keyword_filter("Bottleneck"),
     # AlexNet
     # ReAlnet
+    # "ReAlnet01": 
+    # "AlexNet_training_seed_01": 
+    # "regnety_640": 
 }
 
 
@@ -128,6 +131,9 @@ LAYER_ABBREVIATION_MAPS = {
     "resnet50":            lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
     # AlexNet
     # ReAlnet
+    # "ReAlnet01": 
+    # "AlexNet_training_seed_01": 
+    # "regnety_640": 
 }
 # OLDER VERSION
 # if modelname == "siglip2_vitb16":
