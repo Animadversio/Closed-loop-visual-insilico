@@ -65,12 +65,15 @@ def load_neural_data(data_path, subject_id, stimroot=None):
     }
 
 
-def parse_image_fullpaths(stimulus_names, stimroots):
+def parse_image_fullpaths(stimulus_names, stimroots, arbitrary_format=False,
+                          possible_extensions = (".png", ".jpg", ".jpeg", ".tiff", ".bmp",) ):
     """Parse image full paths from stimulus names and stimulus roots.
     
     Args:
         stimulus_names: List/array of stimulus names (potentially byte strings)
         stimroots: List of root directories to search for stimulus files
+        arbitrary_format: Whether to allow other image file extensions (e.g. .jpg, .jpeg, .png, etc.)
+        possible_extensions: Tuple of possible file extensions
         
     Returns:
         image_fps: List of full paths to stimulus files, with None for missing files
@@ -86,6 +89,15 @@ def parse_image_fullpaths(stimulus_names, stimroots):
                 image_fps.append(fullpath)
                 file_non_exist = False
                 break
+            else:
+                if arbitrary_format:
+                    filename_stem = os.path.splitext(stim_str)[0]
+                    for ext in possible_extensions:
+                        fullpath = os.path.join(stimroot, filename_stem + ext)
+                        if os.path.exists(fullpath):
+                            image_fps.append(fullpath)
+                            file_non_exist = False
+                            break
                 
         if file_non_exist:
             print(f"File {stim_str} does not exist in any of the stimulus roots")
