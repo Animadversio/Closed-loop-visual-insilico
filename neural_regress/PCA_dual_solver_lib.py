@@ -236,6 +236,31 @@ def pca_dual_fit_transform(X, n_components, device='cuda'):
     return pca, X_proj
 
 
+def pca_dual_fit_transform_sep(Xtrain, X2transform, n_components, device='cuda'):
+    """
+    Fit PCA on Xtrain, and transform X2transform using the fitted PCA.
+    """
+    if isinstance(Xtrain, np.ndarray):
+        Xtrain = torch.from_numpy(Xtrain)
+    if isinstance(X2transform, np.ndarray):
+        X2transform = torch.from_numpy(X2transform)
+    X_proj, PC_axes, var, var_ratio, X_mean = pca_dual_torch(Xtrain, n_components=n_components, device=device)
+    pca = create_sklearn_pca_from_torch(PC_axes, var, var_ratio, X_mean, Xtrain.shape[0])
+    # X2transform_proj = pca.transform(X2transform)
+    X2transform_proj = (X2transform.to(device) - X_mean.to(device)) @ PC_axes.to(device).double().T
+    return pca, X_proj, X2transform_proj.cpu()
+
+
+def test_pca_dual_fit_transform_sep():
+    Xtrain = np.random.randn(1000, 1000)
+    X2transform = np.random.randn(1000, 1000)
+    n_components = 500
+    pca, X_proj, X2transform_proj = pca_dual_fit_transform_sep(Xtrain, X2transform, n_components)
+    X2transform_proj_sklearn = pca.transform(X2transform)
+    print(X_proj.shape, X2transform_proj.shape, X2transform_proj_sklearn.shape)
+    assert np.allclose(X2transform_proj, X2transform_proj_sklearn)
+
+
 def test_pca_dual_randn_data(n_features=20000, n_samples=1100, n_components=1000):
     import time
     from sklearn.decomposition import PCA as PCA_sklearn

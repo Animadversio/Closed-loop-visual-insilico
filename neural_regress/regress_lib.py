@@ -450,9 +450,10 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                 else:
                     # fit PCA transformer on training set
                     if use_pca_dual:
-                        from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform
-                        pca_transformer, featmat_pca_ = pca_dual_fit_transform(featmat_train, n_components, device='cuda')
-                        featmat_pca = pca_transformer.transform(featmat)
+                        from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform, pca_dual_fit_transform_sep
+                        # pca_transformer, featmat_pca_ = pca_dual_fit_transform(featmat_train, n_components, device='cuda')
+                        # featmat_pca = pca_transformer.transform(featmat)
+                        pca_transformer, _, featmat_pca = pca_dual_fit_transform_sep(featmat_train, featmat, n_components, device='cuda') # this is more efficient than above. this is transforming on GPU
                     else:
                         pca_transformer = PCA(n_components=n_components)
                         pca_transformer.fit(featmat_train)
@@ -475,6 +476,8 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                         from neural_regress.SRP_torch_lib import SparseRandomProjection_fit_transform_torch
                         featmat_srp, srp_transformer = SparseRandomProjection_fit_transform_torch(featmat, 
                                 n_components=n_components, eps=0.1, random_state=42, device="cuda")
+                        if srp_transformer is None:
+                            srp_transformer = nn.Identity()
                     else:
                         srp_transformer = SparseRandomProjection(n_components=n_components)
                         featmat_srp = srp_transformer.fit_transform(featmat)
@@ -545,9 +548,10 @@ def transform_features2Xdict_new(feat_dict, layer_names=None,
                 else:
                     # fit PCA transformer on training set
                     if use_pca_dual:
-                        from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform
-                        pca_transformer, featmat_pca_ = pca_dual_fit_transform(featmat_train, n_components, device='cuda')
-                        featmat_pca = pca_transformer.transform(featmat)
+                        from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform, pca_dual_fit_transform_sep
+                        # pca_transformer, featmat_pca_ = pca_dual_fit_transform(featmat_train, n_components, device='cuda')
+                        # featmat_pca = pca_transformer.transform(featmat)
+                        pca_transformer, _, featmat_pca = pca_dual_fit_transform_sep(featmat_train, featmat, n_components, device='cuda') # this is more efficient than above. this is transforming on GPU
                     else:
                         pca_transformer = PCA(n_components=n_components)
                         pca_transformer.fit(featmat_train)
