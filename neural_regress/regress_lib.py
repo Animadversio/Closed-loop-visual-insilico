@@ -161,7 +161,7 @@ def calc_reduce_features_dataset(dataset, feat_transformers, net, featlayer,
     return feattsr_col
 
 
-def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_jobs=-1):
+def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_jobs=-1, train_split_idx=None):
     """
     Sweep through a list of regressors (with cross validation), and input type (Xdict)
     For each combination of Xtype and regressor, return the best CVed regressor
@@ -176,9 +176,14 @@ def sweep_regressors(Xdict, y_all, regressors, regressor_names, verbose=True, n_
     """
     result_summary = {}
     models = {}
-    idx_train, idx_test = train_test_split(
-        np.arange(len(y_all)), test_size=0.2, random_state=42, shuffle=True
-    )
+    if train_split_idx is None:
+        idx_train, idx_test = train_test_split(
+            np.arange(len(y_all)), test_size=0.2, random_state=42, shuffle=True
+        )
+    else:
+        idx_train = train_split_idx
+        idx_test = np.setdiff1d(np.arange(len(y_all)), train_split_idx)
+        print(f"Using {len(idx_train)} training samples provided by train_split_idx and {len(idx_test)} testing samples")
     for xtype in Xdict:
         X_all = Xdict[xtype]  # score_vect
         y_train, y_test = y_all[idx_train], y_all[idx_test]
@@ -410,7 +415,8 @@ def sp_cent_transform(x):
 
 def transform_features2Xdict(feat_dict, layer_names=None, 
                              dimred_list=["pca1000", "sp_cent", "sp_avg", "full",],
-                             pretrained_Xtransforms={}, use_pca_dual=True, use_srp_torch=True):
+                             pretrained_Xtransforms={}, use_pca_dual=True, use_srp_torch=True,
+                             train_split_idx=None):
     # now we use pca dual solver by default, changing default behavior. 
     Xdict = {}
     tfm_dict = {}
@@ -420,21 +426,30 @@ def transform_features2Xdict(feat_dict, layer_names=None,
         time_feat_tsr = time.time()
         print(layerkey, feat_tsr.shape, )
         featmat = feat_tsr.flatten(start_dim=1)
+        if train_split_idx is not None:
+            featmat_train = featmat[train_split_idx, :]
+        else:
+            featmat_train = featmat
+        
         for dimred in dimred_list:
             time_dimred = time.time()
             if dimred.startswith("pca"):
                 # TODO: if there is multiple PCA dimred str, we can perform PCA only once and used the cached results and chuncage the columns. 
                 n_components = int(dimred.split("pca")[-1])
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
+                    # use pretrained PCA transformer
                     pca_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
                     featmat_pca = pca_transformer.transform(featmat)
                 else:
+                    # fit PCA transformer on training set
                     if use_pca_dual:
                         from neural_regress.PCA_dual_solver_lib import pca_dual_fit_transform
-                        pca_transformer, featmat_pca = pca_dual_fit_transform(featmat, n_components, device='cuda')
+                        pca_transformer, featmat_pca_ = pca_dual_fit_transform(featmat_train, n_components, device='cuda')
+                        featmat_pca = pca_transformer.transform(featmat)
                     else:
                         pca_transformer = PCA(n_components=n_components)
-                        featmat_pca = pca_transformer.fit_transform(featmat)
+                        pca_transformer.fit(featmat_train)
+                        featmat_pca = pca_transformer.transform(featmat)
                 Xdict.update({f"{layerkey}_{dimred}": featmat_pca})
                 tfm_dict.update({f"{layerkey}_{dimred}": pca_transformer})
                 X_shape = featmat_pca.shape
@@ -444,9 +459,11 @@ def transform_features2Xdict(feat_dict, layer_names=None,
                 else:
                     n_components = int(dimred.split("srp")[-1])
                 if f"{layerkey}_{dimred}" in pretrained_Xtransforms:
+                    # use pretrained SRP transformer
                     srp_transformer = pretrained_Xtransforms[f"{layerkey}_{dimred}"]
                     featmat_srp = srp_transformer.transform(featmat)
                 else:
+                    # fit SRP transformer on training set
                     if use_srp_torch:
                         from neural_regress.SRP_torch_lib import SparseRandomProjection_fit_transform_torch
                         featmat_srp, srp_transformer = SparseRandomProjection_fit_transform_torch(featmat, 
