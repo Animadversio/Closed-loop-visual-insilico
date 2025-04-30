@@ -66,6 +66,27 @@ def load_model_transform(modelname, device="cuda"):
             T.Resize((224, 224)),
             # T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
+    elif modelname == "ReAlnet01":
+        import sys
+        sys.path.append("/n/home12/binxuwang/Github/Closed-loop-visual-insilico")
+        from core.brainscore_model_utils import build_ReAlnet_model
+        model, transforms_pipeline = build_ReAlnet_model(identifier="ReAlnet01")
+    elif modelname == "AlexNet_training_seed_01":
+        import sys
+        sys.path.append("/n/home12/binxuwang/Github/Closed-loop-visual-insilico")
+        from core.brainscore_model_utils import build_alexnet_brainscore
+        model, transforms_pipeline = build_alexnet_brainscore(identifier="training_seed_01")
+    elif modelname == "regnety_640":
+        import timm
+        model = timm.create_model(
+            'regnety_640.seer',
+            pretrained=True,
+            num_classes=0,  # remove classifier nn.Linear
+        )
+        model = model.eval()
+        # get model specific transforms (normalization, resize)
+        data_config = timm.data.resolve_model_data_config(model)
+        transforms_pipeline = timm.data.create_transform(**data_config, is_training=False)
     else:
         raise ValueError(f"Unknown model: {modelname}")
         # model = timm.create_model(modelname, pretrained=True).to(device).eval()
@@ -91,6 +112,8 @@ MODEL_LAYER_FILTERS = {
     "resnet50_dino":       make_keyword_filter("Bottleneck"),
     "resnet50_robust":     make_keyword_filter("Bottleneck"),
     "resnet50":            make_keyword_filter("Bottleneck"),
+    # AlexNet
+    # ReAlnet
 }
 
 
@@ -103,6 +126,8 @@ LAYER_ABBREVIATION_MAPS = {
     "resnet50_dino":       lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
     "resnet50_robust":     lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
     "resnet50":            lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    # AlexNet
+    # ReAlnet
 }
 # OLDER VERSION
 # if modelname == "siglip2_vitb16":
