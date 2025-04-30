@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.append("/n/home12/binxuwang/Github/Closed-loop-visual-insilico")
 import timm
+import time
 import torch
 import torch as th
 import torch.nn as nn
@@ -43,6 +44,7 @@ from sklearn.kernel_ridge import KernelRidge
 import sys
 sys.path.append("/n/home12/binxuwang/Github/Closed-loop-visual-insilico")
 from core.model_load_utils import load_model_transform, MODEL_LAYER_FILTERS, LAYER_ABBREVIATION_MAPS
+from neural_regress.feature_reduction_lib import FEATURE_REDUCTION_DEFAULTS, LAYER_TRANSFORM_FILTERS
 from neural_regress.regress_lib import record_features, perform_regression_sweeplayer, perform_regression_sweeplayer_RidgeCV
 from neural_regress.regress_lib import sweep_regressors, transform_features2Xdict, RidgeCV
 from neural_regress.regress_eval_lib import format_result_df, plot_result_df_per_layer, construct_result_df_masked, \
@@ -80,15 +82,53 @@ print(f"Using device: {device}")
 batch_size = 96
 
 model_names = [
+    "dinov2_vitb14_reg",
+    "clipag_vitb32",
+    "siglip2_vitb16",
+    "radio_v2.5-b",
     "resnet50_robust",
-    "resnet50",
     "resnet50_clip",
     "resnet50_dino",
-    # "dinov2_vitb14_reg",
-    # "clipag_vitb32",
-    # "siglip2_vitb16",
-    # "radio_v2.5-b",
+    "resnet50",
 ]
+
+
+def apply_feature_transforms(feat_dict_lyrswp, module_names2record, dimred_transform_dict, 
+                            layer_transform_filter=None):
+    """Apply feature transforms to each layer using the provided transform dictionary.
+    
+    Args:
+        feat_dict_lyrswp: Dictionary of features for each layer
+        module_names2record: List of layer names to process
+        dimred_transform_dict: Dictionary of transform modules
+        layer_transform_filter: Optional function that takes (layer_name, transform_name) 
+                               and returns True if the transform should be applied to that layer
+        
+    Returns:
+        Xdict_lyrswp: Dictionary of transformed features
+        Xtfmer_lyrswp: Dictionary of transform modules used
+    """
+    Xdict_lyrswp = {}
+    Xtfmer_lyrswp = {}
+    
+    # Default filter that allows all combinations
+    if layer_transform_filter is None:
+        # For backward compatibility with siglip2_vitb16 case
+        layer_transform_filter = lambda layer, dimred_str: not (("attn_pool" in layer) != ("full" in dimred_str))
+    
+    for layer in module_names2record:
+        for dimred_str, transform_module in dimred_transform_dict.items():
+            # Skip if the filter returns False
+            if not layer_transform_filter(layer, dimred_str):
+                continue
+                
+            t0 = time.time()
+            Xdict_lyrswp[f"{layer}_{dimred_str}"] = transform_module(feat_dict_lyrswp[layer])
+            Xtfmer_lyrswp[f"{layer}_{dimred_str}"] = transform_module
+            print(f"Time taken to transform {layer} x {dimred_str}: {time.time() - t0:.3f}s")
+    
+    return Xdict_lyrswp, Xtfmer_lyrswp
+
 
 outputroot = r"/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Encoding_models"
 output_name = "model_outputs"
@@ -131,13 +171,23 @@ for modelname in model_names:
     print(f"{modelname} done!!!")
     
     fetcher.cleanup()
-    dimred_list = ["pca750", "srp", ]
+    print(f"Applying feature reduction: {dimred_list}")
+    if modelname in FEATURE_REDUCTION_DEFAULTS and ("resnet" not in modelname):
+        dimred_transform_dict = FEATURE_REDUCTION_DEFAULTS[modelname](model)
+        layer_transform_filter = LAYER_TRANSFORM_FILTERS[modelname]
+        dimred_list = list(dimred_transform_dict.keys())
+        Xdict_lyrswp, Xtfmer_lyrswp = apply_feature_transforms(
+            feat_dict_lyrswp, module_names2record, dimred_transform_dict, layer_transform_filter)
+    else:
+        dimred_list = ["pca750", "srp", ]
+        Xdict_lyrswp, Xtfmer_lyrswp = transform_features2Xdict(feat_dict_lyrswp, module_names2record, 
+                            dimred_list=dimred_list, pretrained_Xtransforms={}, #  "srp"
+                            use_pca_dual=True, use_srp_torch=True, train_split_idx=train_idx)
+    
+    print(f"{len(Xdict_lyrswp)} features computed! ")
+    
     resp_mat_sel = resp_mat[:, :] # Select all channels, no mask
     print(f"Fitting models for All channels N={resp_mat_sel.shape[1]}")
-    print(f"Applying feature reduction: {dimred_list}")
-    Xdict_lyrswp, Xtfmer_lyrswp = transform_features2Xdict(feat_dict_lyrswp, module_names2record, 
-                            dimred_list=dimred_list,  pretrained_Xtransforms={}, #  "srp"
-                            use_pca_dual=True, use_srp_torch=True, train_split_idx=train_idx)
     regressors = [RidgeCV(alphas=[1E-4, 1E-3, 1E-2, 1E-1, 1, 10, 100, 1E3, 1E4, 1E5, 1E6, 1E7, 1E8, 1E9], 
                         alpha_per_target=True,),
                 # MultiTaskLassoCV(cv=5, n_alphas=100, n_jobs=-1, max_iter=10000, tol=1E-4), 
@@ -154,7 +204,7 @@ for modelname in model_names:
     # th.save(Xtfmer_lyrswp, join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pth"))
     # pkl.dump(Xtfmer_lyrswp, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"), "wb"))
     # %%
-    figh = plot_result_df_per_layer(result_df_lyrswp, shorten_func=layer_abbrev, dimred_list=dimred_list, sharey=True, grid=True)
+    figh = plot_result_df_per_layer(result_df_lyrswp, dimred_list=dimred_list, shorten_func=layer_abbrev, sharey=True, grid=True)
     figh.suptitle(f"{subject_id} {modelname} layer sweep")
     figh.tight_layout()
     figh.show()
@@ -166,7 +216,7 @@ for modelname in model_names:
         result_df_masked = construct_result_df_masked(pred_D2_dict['D2_per_unit_train_dict'], 
                                                     pred_D2_dict['D2_per_unit_test_dict'], 
                                                     mask=reliability > thresh)
-        figh = plot_result_df_per_layer(result_df_masked, shorten_func=layer_abbrev, dimred_list=dimred_list, sharey=True, grid=True)
+        figh = plot_result_df_per_layer(result_df_masked, dimred_list=dimred_list, shorten_func=layer_abbrev, sharey=True, grid=True)
         figh.suptitle(f"{subject_id} {modelname} layer sweep | reliable channels > {thresh} (N={channel_count})")
         figh.tight_layout()
         figh.show()
