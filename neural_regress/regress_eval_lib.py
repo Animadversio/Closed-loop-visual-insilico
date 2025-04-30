@@ -16,6 +16,10 @@ def compute_pred_dict_D2_per_unit(fit_models_sweep, Xdict,
         idx_train, idx_test = train_test_split(
             np.arange(len(resp_mat_sel)), test_size=0.2, random_state=42, shuffle=True
         )
+        print(f"using random split to split the data into train and test set (N_train={len(idx_train)}, N_test={len(idx_test)})")
+    elif idx_train is not None and idx_test is None:
+        idx_test = np.setdiff1d(np.arange(len(resp_mat_sel)), idx_train)
+        print(f"using provided idx_train as train set, and the rest as test set (N_train={len(idx_train)}, N_test={len(idx_test)})")
     pred_dict = {}
     D2_per_unit_train_dict = {}
     D2_per_unit_test_dict = {}
@@ -139,7 +143,8 @@ def plot_result_df_per_layer(result_df, shorten_func=None, dimred_list=[], share
     xticklabels = [shorten_func(label.get_text()) for label in xticklabels]
     plt.xticks(ticks=range(len(xticklabels)), labels=xticklabels, rotation=45)
     plt.title("Training R2")
-    plt.ylim(ylim[0], ylim[1])
+    if ylim[0] is not None or ylim[1] is not None:
+        plt.ylim(ylim[0], ylim[1])
     axs[0].grid(grid)
     
     plt.sca(axs[1])
@@ -150,7 +155,8 @@ def plot_result_df_per_layer(result_df, shorten_func=None, dimred_list=[], share
     xticklabels = [shorten_func(label.get_text()) for label in xticklabels]
     plt.xticks(ticks=range(len(xticklabels)), labels=xticklabels, rotation=45)
     plt.title("Test R2")
-    plt.ylim(ylim[0], ylim[1])
+    if ylim[0] is not None or ylim[1] is not None:
+        plt.ylim(ylim[0], ylim[1])
     axs[1].grid(grid)
     plt.tight_layout()
     return fig
