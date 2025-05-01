@@ -30,14 +30,11 @@ from circuit_toolkit.layer_hook_utils import featureFetcher_module, featureFetch
 from circuit_toolkit.dataset_utils import ImagePathDataset
 from torch.utils.data import DataLoader
 
-import sklearn
 from sklearn.pipeline import make_pipeline
 from sklearn.random_projection import SparseRandomProjection, GaussianRandomProjection
 from sklearn.linear_model import Ridge, Lasso
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import RidgeCV
-from sklearn.decomposition import PCA
-from sklearn.kernel_ridge import KernelRidge
 # %%
 import sys
 sys.path.append("/n/home12/binxuwang/Github/Closed-loop-visual-insilico")
@@ -73,6 +70,7 @@ resp_mat = data_dict['resp_mat']
 reliability = data_dict['reliability']
 ncsnr = data_dict['ncsnr']
 
+# load the train/test split
 df_stim = pd.read_csv(join(encoding_stim_dir, "encoding_stimuli_split_seed0.csv"), )
 train_idx = df_stim[df_stim["is_train"]].index
 
@@ -82,14 +80,17 @@ print(f"Using device: {device}")
 batch_size = 96
 
 model_names = [
-    "dinov2_vitb14_reg",
-    "clipag_vitb32",
-    "siglip2_vitb16",
-    "radio_v2.5-b",
+    "AlexNet_training_seed_01",
     "resnet50_robust",
     "resnet50_clip",
     "resnet50_dino",
     "resnet50",
+    "regnety_640",
+    "dinov2_vitb14_reg",
+    "clipag_vitb32",
+    "siglip2_vitb16",
+    "radio_v2.5-b",
+    # "ReAlnet01",
 ]
 
 
@@ -162,7 +163,7 @@ for modelname in model_names:
     print(f"Sweeping regressors: {regressor_names}")
     result_df_lyrswp, fit_models_lyrswp = sweep_regressors(Xdict_lyrswp, resp_mat_sel, regressors, regressor_names, 
                                                         verbose=True, train_split_idx=train_idx)
-    pred_D2_dict = compute_pred_dict_D2_per_unit(fit_models_lyrswp, Xdict_lyrswp, resp_mat_sel)
+    pred_D2_dict = compute_pred_dict_D2_per_unit(fit_models_lyrswp, Xdict_lyrswp, resp_mat_sel, idx_train=train_idx) # Fixed the bug! now the train/test split is fixed
     pkl.dump(pred_D2_dict, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_pred_meta.pkl"), "wb"))
     result_df_lyrswp.to_csv(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_sweep_RidgeCV.csv"))
     result_df_lyrswp.to_pickle(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_sweep_RidgeCV_df.pkl"))
@@ -171,6 +172,7 @@ for modelname in model_names:
     # pkl.dump(Xtfmer_lyrswp, open(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_Xtfmer_RidgeCV.pkl"), "wb"))
     # %%
     result_df_lyrswp = format_result_df(result_df_lyrswp, dimred_list)
+    result_df_lyrswp.to_csv(join(figdir, f"{subject_id}_{modelname}_sweep_regressors_layers_sweep_RidgeCV_formatted.csv"))
     figh = plot_result_df_per_layer(result_df_lyrswp, dimred_list=dimred_list, shorten_func=layer_abbrev, sharey=True, grid=True)
     figh.suptitle(f"{subject_id} {modelname} layer sweep")
     figh.tight_layout()
@@ -188,6 +190,21 @@ for modelname in model_names:
         figh.tight_layout()
         figh.show()
         saveallforms(figdir, f"{subject_id}_{modelname}_layer_sweep_synopisis_reliable_thresh{thresh}_masked", figh=figh)
+    
+    topk_reliable_chan_idx = np.argsort(reliability)[-5:][::-1]
+    topk_reliable = reliability[topk_reliable_chan_idx]
+    print("Top 5 most reliability: ", topk_reliable)
+    print("Top 5 most reliable channels idx: ", topk_reliable_chan_idx)
+    for idx in topk_reliable_chan_idx:
+        single_chan_result_df = construct_result_df_masked(pred_D2_dict['D2_per_unit_train_dict'], 
+                                                           pred_D2_dict['D2_per_unit_test_dict'], 
+                                                           mask=idx)
+        figh = plot_result_df_per_layer(single_chan_result_df, dimred_list=dimred_list, shorten_func=layer_abbrev, sharey=True, grid=True)
+        figh.suptitle(f"{subject_id} {modelname} layer sweep | Top reliable channel {idx} | reliability: {reliability[idx]:.3f}")
+        figh.tight_layout()
+        figh.show()
+        saveallforms(figdir, f"{subject_id}_{modelname}_layer_sweep_synopisis_single_reliable_Ch{idx:02d}", figh=figh)
+    
     plt.close("all")
     if "resnet50" in modelname:
         # if so, save the sparsified Xtfmer_lyrswp, not every layer 
