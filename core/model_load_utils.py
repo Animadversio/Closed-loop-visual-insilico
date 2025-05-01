@@ -112,7 +112,8 @@ MODEL_LAYER_FILTERS = {
     "resnet50_dino":       make_keyword_filter("Bottleneck"),
     "resnet50_robust":     make_keyword_filter("Bottleneck"),
     "resnet50":            make_keyword_filter("Bottleneck"),
-    # AlexNet
+    "AlexNet_training_seed_01": make_keyword_filter("ReLU", "Conv2d", "MaxPool"),
+    "regnety_640":         make_keyword_filter("Bottleneck"),
     # ReAlnet
     # "ReAlnet01": 
     # "AlexNet_training_seed_01": 
@@ -121,20 +122,44 @@ MODEL_LAYER_FILTERS = {
 
 
 LAYER_ABBREVIATION_MAPS = {
-    "siglip2_vitb16":      lambda layername: layername.replace(".trunk.blocks.Block", "B").replace(".trunk.AttentionPoolLatentattn_pool", "attnpool"),
-    "dinov2_vitb14_reg":   lambda layername: layername.replace(".blocks.NestedTensorBlock", "B"),
-    "radio_v2.5-b":        lambda layername: layername.replace(".model.blocks.Block", "B"),
-    "clipag_vitb32":       lambda layername: layername.replace(".transformer.resblocks.ResidualAttentionBlock", "B"),
-    "resnet50_clip":       lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
-    "resnet50_dino":       lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
-    "resnet50_robust":     lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
-    "resnet50":            lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "siglip2_vitb16":           lambda layername: layername.replace(".trunk.blocks.Block", "B").replace(".trunk.AttentionPoolLatentattn_pool", "attnpool"),
+    "dinov2_vitb14_reg":        lambda layername: layername.replace(".blocks.NestedTensorBlock", "B"),
+    "radio_v2.5-b":             lambda layername: layername.replace(".model.blocks.Block", "B"),
+    "clipag_vitb32":            lambda layername: layername.replace(".transformer.resblocks.ResidualAttentionBlock", "B"),
+    "resnet50_clip":            lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "resnet50_dino":            lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "resnet50_robust":          lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "resnet50":                 lambda layername: layername.replace("Bottleneck", "B").replace(".layer", "L"),
+    "AlexNet_training_seed_01": lambda layername: alexnet_rename_dict[layername] if layername in alexnet_rename_dict else layername,
+    "regnety_640":              lambda layername: layername.replace("Bottleneckb", "B").replace(".s", "S"),
     # AlexNet
     # ReAlnet
     # "ReAlnet01": 
     # "AlexNet_training_seed_01": 
     # "regnety_640": 
 }
+
+
+alexnet_rename_dict = {'.features.Conv2d0': 'conv1',
+    '.features.ReLU1': 'relu1',
+    '.features.MaxPool2d2': 'maxpool1',
+    '.features.Conv2d3': 'conv2',
+    '.features.ReLU4': 'relu2',
+    '.features.MaxPool2d5': 'maxpool2',
+    '.features.Conv2d6': 'conv3',
+    '.features.ReLU7': 'relu3',
+    '.features.Conv2d8': 'conv4',
+    '.features.ReLU9': 'relu4',
+    '.features.Conv2d10': 'conv5',
+    '.features.ReLU11': 'relu5',
+    '.features.MaxPool2d12': 'maxpool5',
+    '.classifier.Conv2d0': 'fc6',
+    '.classifier.ReLU1': 'relu6',
+    '.classifier.Conv2d3': 'fc7',
+    '.classifier.ReLU4': 'relu7',
+    '.classifier.Conv2d6': 'fc8'}
+
+
 # OLDER VERSION
 # if modelname == "siglip2_vitb16":
 #     layer_filter = lambda name: ".trunk.blocks.Block" in name or ".trunk.AttentionPoolLatentattn_pool" in name

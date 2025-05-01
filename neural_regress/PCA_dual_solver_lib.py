@@ -247,7 +247,7 @@ def pca_dual_fit_transform_sep(Xtrain, X2transform, n_components, device='cuda')
     X_proj, PC_axes, var, var_ratio, X_mean = pca_dual_torch(Xtrain, n_components=n_components, device=device)
     pca = create_sklearn_pca_from_torch(PC_axes, var, var_ratio, X_mean, Xtrain.shape[0])
     # X2transform_proj = pca.transform(X2transform)
-    X2transform_proj = (X2transform.to(device) - X_mean.to(device)) @ PC_axes.to(device).double().T
+    X2transform_proj = (X2transform.to(device) - X_mean.to(device)).float() @ PC_axes.to(device).float().T
     return pca, X_proj, X2transform_proj.cpu()
 
 
@@ -258,7 +258,7 @@ def test_pca_dual_fit_transform_sep():
     pca, X_proj, X2transform_proj = pca_dual_fit_transform_sep(Xtrain, X2transform, n_components)
     X2transform_proj_sklearn = pca.transform(X2transform)
     print(X_proj.shape, X2transform_proj.shape, X2transform_proj_sklearn.shape)
-    assert np.allclose(X2transform_proj, X2transform_proj_sklearn)
+    assert np.allclose(X2transform_proj, X2transform_proj_sklearn, rtol=1e-4, atol=1e-4)
 
 
 def test_pca_dual_randn_data(n_features=20000, n_samples=1100, n_components=1000):
