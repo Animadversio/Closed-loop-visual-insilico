@@ -34,14 +34,18 @@ class SRP_torch(torch.nn.Module):
     def __init__(self, srp: SparseRandomProjection, device="cpu"):
         super(SRP_torch, self).__init__()
         matcoo = srp.components_.tocoo()
-        self.components = torch.sparse.FloatTensor(
+        self.register_buffer('components', torch.sparse.FloatTensor(
             torch.LongTensor([matcoo.row.tolist(), matcoo.col.tolist()]),
-            torch.FloatTensor(matcoo.data.astype(np.float32))).to(device)
+            torch.FloatTensor(matcoo.data.astype(np.float32))).to(device))
 
     def forward(self, X):
         if X.ndim > 2:
             X = X.flatten(start_dim=1)
         return torch.sparse.mm(self.components, X.T).T
+    
+    def to(self, device):
+        self.components = self.components.to(device)
+        return self
 
 
 class PCA_torch(torch.nn.Module):
@@ -49,8 +53,8 @@ class PCA_torch(torch.nn.Module):
         super(PCA_torch, self).__init__()
         self.n_features = pca.n_features_in_
         self.n_components = pca.n_components
-        self.mean = torch.from_numpy(pca.mean_).float().to(device)  # (n_features,)
-        self.components = torch.from_numpy(pca.components_).float().to(device)  # (n_components, n_features)
+        self.register_buffer('mean', torch.from_numpy(pca.mean_).float().to(device))  # (n_features,)
+        self.register_buffer('components', torch.from_numpy(pca.components_).float().to(device))  # (n_components, n_features)
 
     def forward(self, X):
         if X.ndim > 2:
@@ -69,16 +73,26 @@ class LinearRegression_torch(torch.nn.Module):
         super(LinearRegression_torch, self).__init__()
         if isinstance(linear_regression, GridSearchCV):
             assert isinstance(linear_regression.estimator, LinearModel)
-            self.coef = torch.from_numpy(linear_regression.best_estimator_.coef_).float().to(device)
-            self.intercept = torch.tensor(linear_regression.best_estimator_.intercept_).float().to(device)
+            coef = linear_regression.best_estimator_.coef_
+            intercept = linear_regression.best_estimator_.intercept_
         else:
-            self.coef = torch.from_numpy(linear_regression.coef_).float().to(device)
-            self.intercept = torch.tensor(linear_regression.intercept_).float().to(device)
-        if self.coef.ndim == 1:
-            self.coef = self.coef.unsqueeze(1)
+            coef = linear_regression.coef_
+            intercept = linear_regression.intercept_
+        
+        coef = torch.from_numpy(coef).float()
+        if coef.ndim == 1:
+            coef = coef.unsqueeze(1)
+            
+        self.register_buffer('coef', coef.to(device))
+        self.register_buffer('intercept', torch.tensor(intercept).float().to(device))
 
     def forward(self, X):
         return torch.mm(X, self.coef) + self.intercept
+    
+    def to(self, device):
+        self.coef = self.coef.to(device)
+        self.intercept = self.intercept.to(device)
+        return self
 
 
 class PLS_torch(torch.nn.Module):
@@ -96,6 +110,13 @@ class PLS_torch(torch.nn.Module):
         X = X / self.x_std
         Ypred = torch.mm(X, self.coef)
         return Ypred + self.y_mean
+    
+    def to(self, device):
+        self.coef = self.coef.to(device)
+        self.x_mean = self.x_mean.to(device)
+        self.x_std = self.x_std.to(device)
+        self.y_mean = self.y_mean.to(device)
+        return self
 
 
 class SpatialAvg_torch(torch.nn.Module):
@@ -109,6 +130,9 @@ class SpatialAvg_torch(torch.nn.Module):
             return X.mean(dim=2)
         else:
             return X
+    
+    def to(self, device):
+        return self  # No parameters to move
 
 
 if __name__ == "__main__":
