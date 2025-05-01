@@ -1,0 +1,84 @@
+model_name: "{{model_name}}"  
+fit_method_name: "{{fit_method_name}}"  
+
+# Units to process
+unit_ids: "{{unit_ids}}"
+
+# Model and data paths
+subject_id: "{{subject_id}}"  
+layer_name: "{{layer_name}}"  
+outputdir: "{{outputdir}}"
+readout_path: "{{readout_path}}"
+xtransform_path: "{{xtransform_path}}"
+meta_path: "{{meta_path}}"
+
+
+# Paths
+result_folder: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_accentuation"
+gifs_folder: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_gifs"
+log_dir: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_logs"
+
+
+# Input images
+seed_image_paths:
+  - "shared1000/shared0631_nsd46161.png"
+  - "shared1000/shared0131_nsd11160.png"
+  - "shared1000/shared0196_nsd16467.png"
+  - "shared1000/shared0147_nsd12066.png"
+  - "shared1000/shared0491_nsd37225.png"
+  - "shared1000/shared0485_nsd36911.png"
+  - "shared1000/shared0862_nsd62480.png"
+  - "shared1000/shared0255_nsd21193.png"
+  - "shared1000/shared0974_nsd70506.png"
+  - "shared1000/shared0189_nsd15794.png"
+
+# Hyperparameter tuning settings
+hp_tuning:
+  enabled: true
+  num_images: 3  # Number of images to use for tuning
+  configs:
+    - noise: 0.30
+      decay: 2.5
+      total_steps: 6000
+      learning_rate: 12.0
+      box_size: [0.90, 0.95]
+    - noise: 0.25
+      decay: 2.4
+      total_steps: 6000
+      learning_rate: 12.0
+      box_size: [0.90, 0.95]
+    - noise: 0.15
+      decay: 2.0
+      total_steps: 6000
+      learning_rate: 12.0
+      box_size: [0.90, 0.95]
+    - noise: 0.1
+      decay: 1.5
+      total_steps: 6000
+      learning_rate: 12.0
+      box_size: [0.90, 0.95]
+    - noise: 0.05
+      decay: 1.2
+      total_steps: 6000
+      learning_rate: 12.0
+      box_size: [0.90, 0.95]
+
+# Feature Accentuation hyperparameters (default if tuning is disabled)
+fa_hyperparameters:
+  noise: 0.1
+  decay: 1.5
+  total_steps: 6000
+  learning_rate: 12.0
+  image_size: 1024
+  model_input_size: 224
+  values_range: [0.0, 1.0]
+  crops_per_iteration: 8
+  box_size: [0.90, 0.95]
+  penalty: 0.0
+
+# Other settings
+extend_range: 0.25  # Percentage to extend range of target levels
+num_levels: 11      # Number of target levels to generate
+generate_gifs: true
+bicubic_interpolation: false
+generate_comprehensive_gifs: true
