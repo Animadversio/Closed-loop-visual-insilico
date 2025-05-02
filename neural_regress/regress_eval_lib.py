@@ -12,7 +12,7 @@ compute_R2_per_unit = compute_D2_per_unit
 def compute_pred_dict_D2_per_unit(fit_models_sweep, Xdict, 
                       resp_mat_sel, idx_train=None, idx_test=None): 
     # , figdir, subject_id, modelname
-    if idx_train is None or idx_test is None:
+    if idx_train is None and idx_test is None:
         idx_train, idx_test = train_test_split(
             np.arange(len(resp_mat_sel)), test_size=0.2, random_state=42, shuffle=True
         )

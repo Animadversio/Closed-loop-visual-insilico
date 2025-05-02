@@ -21,16 +21,26 @@ log_dir: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_na
 
 # Input images
 seed_image_paths:
-  - "shared1000/shared0631_nsd46161.png"
-  - "shared1000/shared0131_nsd11160.png"
-  - "shared1000/shared0196_nsd16467.png"
-  - "shared1000/shared0147_nsd12066.png"
-  - "shared1000/shared0491_nsd37225.png"
-  - "shared1000/shared0485_nsd36911.png"
-  - "shared1000/shared0862_nsd62480.png"
-  - "shared1000/shared0255_nsd21193.png"
-  - "shared1000/shared0974_nsd70506.png"
-  - "shared1000/shared0189_nsd15794.png"
+  # - "shared1000/shared0631_nsd46161.png"
+  # - "shared1000/shared0131_nsd11160.png"
+  # - "shared1000/shared0196_nsd16467.png"
+  # - "shared1000/shared0147_nsd12066.png"
+  # - "shared1000/shared0491_nsd37225.png"
+  # - "shared1000/shared0485_nsd36911.png"
+  # - "shared1000/shared0862_nsd62480.png"
+  # - "shared1000/shared0255_nsd21193.png"
+  # - "shared1000/shared0974_nsd70506.png"
+  # - "shared1000/shared0189_nsd15794.png"
+  - "shared1000/shared0575_nsd43157.png"
+  - "shared1000/shared0850_nsd61798.png"
+  - "shared1000/shared0968_nsd70194.png"
+  - "shared1000/shared0241_nsd20065.png"
+  - "shared1000/shared0160_nsd13231.png"
+  - "shared1000/shared0070_nsd07008.png"
+  - "shared1000/shared0055_nsd05879.png"
+  - "shared1000/shared0668_nsd48623.png"
+  - "shared1000/shared0488_nsd36979.png"
+  - "shared1000/shared0940_nsd68312.png"
 
 # Hyperparameter tuning settings
 hp_tuning:
