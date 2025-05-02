@@ -52,6 +52,7 @@ df_stim = pd.read_csv(join(encoding_stim_dir, "encoding_stimuli_split_seed0.csv"
 train_idx = df_stim[df_stim["is_train"]].index
 
 for subject_id, filename in [
+    # ("red_20250428-20240429", "red_20250428-20240429_vvs-encodingstimuli_z1_rw100-400.h5"),
     ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5"), 
     ("paul_20250428-20250430", "paul_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5"), 
     ("three0_250426-250430", "three0_250426-250430_vvs-encodingstimuli_z1_rw80-250.h5"), 
