@@ -74,39 +74,9 @@ def sweep_combine_result_df(model_output_dir, subject_id, channel_mask=None, mod
 
 # %%
 # Create a function that returns a figure
-def plot_best_per_model(best_per_model, subtitle=f'{subject_id} - Best Layer Performance per Model (Reliability > 0.7)', figsize=(12, 6), descending=True):
+def plot_best_per_model(best_per_model, subtitle=f'Best Layer Performance per Model', figsize=(12, 6), descending=True):
     if descending:
         best_per_model = best_per_model.sort_values('test_score', ascending=False)
-    fig, ax = plt.subplots(figsize=figsize)
-    bars = ax.bar(best_per_model['modelname'], best_per_model['test_score'], color='skyblue')
-    ax.set_xlabel('Model')
-    ax.set_ylabel('Best Test Score')
-    ax.set_title(subtitle)
-    plt.xticks(rotation=30, ha='right')
-    ax.grid(axis='y', linestyle='--', alpha=0.7)
-    # Add the best layer/dimred info as text on top of each bar
-    for i, bar in enumerate(bars):
-        layer = best_per_model.iloc[i]['layer_abbrev']
-        dimred = best_per_model.iloc[i]['dimred']
-        score = best_per_model.iloc[i]['test_score']
-        
-        # Truncate layer name if too long
-        if len(layer) > 20:
-            layer = layer[:17] + "..."
-            
-        ax.text(
-            bar.get_x() + bar.get_width()/2, 
-            bar.get_height() + 0.01, 
-            f"{layer}\n{dimred}\n{score:.3f}", 
-            ha='center', va='bottom', 
-            fontsize=8, rotation=0
-        )
-    fig.tight_layout()
-    return fig
-
-# Create a function that returns a figure
-def plot_layer_sweep_per_model(result_df_all, subtitle=f'{subject_id} - Best Layer Performance per Model (Reliability > 0.7)', figsize=(12, 6), descending=True):
-
     fig, ax = plt.subplots(figsize=figsize)
     bars = ax.bar(best_per_model['modelname'], best_per_model['test_score'], color='skyblue')
     ax.set_xlabel('Model')
@@ -234,7 +204,7 @@ for subject_id, filename in [
         top5_chan_result_df = sweep_combine_result_df(model_output_dir, subject_id, channel_mask)
         top5_chan_result_df.to_csv(join(synopsis_dir, f"{subject_id}_{mask_label}_chan_all_models_result_df_synopsis_reliability_{threshold}.csv"))
 
-        # %%
+        # %
         # Find the best layer/dimred/regressor combination for each model
         best_per_model = top5_chan_result_df.query("'pca750' in dimred").groupby('modelname').apply(
             lambda x: x.loc[x['test_score'].idxmax()]
@@ -258,3 +228,5 @@ for subject_id, filename in [
         saveallforms(synopsis_dir, f"{subject_id}_{mask_label}_chan_all_models_comparison_by_layer", fig)
         plt.show()
         
+
+# %%
