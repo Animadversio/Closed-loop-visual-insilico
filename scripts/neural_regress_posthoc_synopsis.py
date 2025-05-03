@@ -178,10 +178,12 @@ subject_id, filename = "paul_20250428-20250430", "paul_20250428-20250430_vvs-enc
 
 for subject_id, filename in [
     # ("red_20250428-20240429", "red_20250428-20240429_vvs-encodingstimuli_z1_rw100-400.h5"),
-    ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5"), 
-    ("paul_20250428-20250430", "paul_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5"), 
-    ("three0_250426-250430", "three0_250426-250430_vvs-encodingstimuli_z1_rw80-250.h5"), 
-    ("venus_250426-250429", "venus_250426-250429_vvs-encodingstimuli_z1_rw80-250.h5"), 
+    # ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5"), 
+    # ("paul_20250428-20250430", "paul_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5"), 
+    # ("three0_250426-250430", "three0_250426-250430_vvs-encodingstimuli_z1_rw80-250.h5"), 
+    # ("venus_250426-250429", "venus_250426-250429_vvs-encodingstimuli_z1_rw80-250.h5"), 
+    ("three0_250426-250501", "three0_250426-250501_vvs-encodingstimuli_z1_rw80-250.h5"),
+    ("leap_250426-250501", "leap_250426-250501_vvs-encodingstimuli_z1_rw80-250.h5"),
 ]:
     data_path = join(dataroot, filename)
     model_output_dir = join(model_root, subject_id, "model_outputs_pca4all")
