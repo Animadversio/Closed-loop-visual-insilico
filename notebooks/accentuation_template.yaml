@@ -14,10 +14,12 @@ meta_path: "{{meta_path}}"
 
 
 # Paths
-result_folder: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_accentuation"
-gifs_folder: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_gifs"
-log_dir: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_logs"
-
+# result_folder: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_accentuation"
+# gifs_folder: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_gifs"
+# log_dir: "/n/netscratch/kempner_fellows/Lab/tfel/prj_control/{{date}}_{{model_name}}_logs"
+result_folder: "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_outputs/{{date}}_{{subject_id}}_{{model_name}}_accentuation"
+gifs_folder: "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_outputs/{{date}}_{{subject_id}}_{{model_name}}_gifs"
+log_dir: "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_outputs/{{date}}_{{subject_id}}_{{model_name}}_logs"
 
 # Input images
 seed_image_paths:

@@ -8,7 +8,7 @@ def load_model_transform(modelname, device="cuda"):
     # Prepare model and transforms
     if modelname == "resnet50_robust":
         model = resnet50(pretrained=False)
-        model.load_state_dict(th.load("/n/home12/binxuwang/Github/Closed-loop-visual-insilico/checkpoints/imagenet_linf_8_pure.pt"))
+        model.load_state_dict(th.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/model_backbones/imagenet_linf_8_pure.pt"))
         transforms_pipeline = T.Compose([
             T.ToTensor(),
             T.Resize((224, 224)),
