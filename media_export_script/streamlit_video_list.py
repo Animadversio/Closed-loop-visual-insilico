@@ -38,6 +38,7 @@ def list_media_files(root_dir: str, exts: list) -> list:
 st.sidebar.title("Settings")
 root_dir = st.sidebar.text_input("Root directory", value="/Users/binxuwang/Library/CloudStorage/OneDrive-HarvardUniversity/VVS_Accentuation_project/Figures/red_20250428-30_accentuation")
 regex_pattern = st.sidebar.text_input("Filter filenames (regex)", value="unit_0")
+parent_folder_pattern = st.sidebar.text_input("Filter parent folder (regex)", value="")
 
 # Compile regex, handle errors
 regex = None
@@ -45,7 +46,14 @@ if regex_pattern:
     try:
         regex = re.compile(regex_pattern, re.IGNORECASE)
     except re.error as e:
-        st.sidebar.error(f"Invalid regex: {e}")
+        st.sidebar.error(f"Invalid filename regex: {e}")
+
+parent_regex = None
+if parent_folder_pattern:
+    try:
+        parent_regex = re.compile(parent_folder_pattern, re.IGNORECASE)
+    except re.error as e:
+        st.sidebar.error(f"Invalid parent folder regex: {e}")
 
 extensions = st.sidebar.multiselect(
     "Select file types to display",
@@ -63,6 +71,8 @@ st.write("Displaying media files from:", root_dir)
 media_files = list_media_files(root_dir, extensions)
 if regex:
     media_files = [f for f in media_files if regex.search(f.name)]
+if parent_regex:
+    media_files = [f for f in media_files if parent_regex.search(str(f.parent.name))]
 
 if not media_files:
     st.warning("No media files found. Adjust your settings in the sidebar.")
