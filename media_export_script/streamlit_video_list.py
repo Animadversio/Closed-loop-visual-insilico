@@ -36,7 +36,19 @@ def list_media_files(root_dir: str, exts: list) -> list:
 
 # Sidebar controls
 st.sidebar.title("Settings")
-root_dir = st.sidebar.text_input("Root directory", value="/Users/binxuwang/Library/CloudStorage/OneDrive-HarvardUniversity/VVS_Accentuation_project/Figures/red_20250428-30_accentuation")
+# Check if we're on macOS or the cluster
+if os.path.exists("/Users/binxuwang"):
+    # Path for macOS
+    root_path = "/Users/binxuwang/Library/CloudStorage/OneDrive-HarvardUniversity/VVS_Accentuation_project/Figures/red_20250428-30_accentuation"
+else:
+    # Path for cluster check username is binxuwang
+    # Path for cluster - check if username is binxuwang
+    import getpass
+    username = getpass.getuser()
+    if username != "binxuwang":
+        st.sidebar.warning(f"Current user is {username}, not binxuwang. Paths may need adjustment.")
+    root_path = "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_outputs/"
+root_dir = st.sidebar.text_input("Root directory", value=root_path)
 regex_pattern = st.sidebar.text_input("Filter filenames (regex)", value="unit_0")
 parent_folder_pattern = st.sidebar.text_input("Filter parent folder (regex)", value="")
 
