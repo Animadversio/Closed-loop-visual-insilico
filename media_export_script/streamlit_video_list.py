@@ -2,6 +2,11 @@
 Usage:
     streamlit run streamlit_video_list.py
 
+Remote usage on cluster:
+    streamlit run streamlit_video_list.py \
+        --server.address 0.0.0.0 \
+        --server.port 8501 \
+        --server.headless true
 """
 
 
