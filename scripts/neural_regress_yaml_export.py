@@ -4,10 +4,6 @@
 
 # %% [markdown]
 # ### Model export to Thomas
-# 
-
-# %%
-
 import os
 from os.path import join
 import torch as th
@@ -133,7 +129,8 @@ ephys_data_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Ephys_Data"
 export_root = f"/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/Encoding_model_outputs"
 yaml_root = "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_configs"
 # subject_id = "red_20250428-20240429"
-subject_id, h5_filename = ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
+# subject_id, h5_filename = ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
+subject_id, h5_filename = ("paul_20250428-20250430", "paul_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
 
 raw_model_output_dir = join(model_root, subject_id, "model_outputs_pca4all")
 yaml_exportdir = f"{yaml_root}/{subject_id}"
