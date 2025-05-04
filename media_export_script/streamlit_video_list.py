@@ -94,14 +94,17 @@ else:
     for row_files in rows:
         cols_streamlit = st.columns(cols)
         for file, col in zip(row_files, cols_streamlit):
+            # Create caption with parent folder name and file name
+            caption = f"{file.parent.name}\n{file.name}"
             if file.suffix.lower() == ".mp4":
                 # Embed HTML video for precise width control
                 video_bytes = file.read_bytes()
                 b64 = base64.b64encode(video_bytes).decode()
                 html = f"<video controls width='{video_width}'><source src='data:video/mp4;base64,{b64}' type='video/mp4'></video>"
                 col.markdown(html, unsafe_allow_html=True)
+                col.caption(caption)  # Add caption separately for videos
             else:
                 # Images and GIFs use container width
-                col.image(str(file), caption=file.name, use_container_width=True)
+                col.image(str(file), caption=caption, use_container_width=True)
 
 st.write(f"Displayed {len(media_files)} items in a {cols}-column grid.")
