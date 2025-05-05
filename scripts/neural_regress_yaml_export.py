@@ -121,7 +121,6 @@ def save_and_verify_config(content, output_yaml_path, config=None):
 # %% [markdown]
 # ### Export for additional day
 
-# %%
 model_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Encoding_models/"
 ephys_data_root = "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Ephys_Data"
 # yaml_root = f"/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/accentuation_configs"
@@ -131,6 +130,7 @@ yaml_root = "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_c
 # subject_id = "red_20250428-20240429"
 # subject_id, h5_filename = ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
 subject_id, h5_filename = ("paul_20250428-20250430", "paul_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
+subject_id, h5_filename = ("venus_250426-250429", "venus_250426-250429_vvs-encodingstimuli_z1_rw80-250.h5")
 
 raw_model_output_dir = join(model_root, subject_id, "model_outputs_pca4all")
 yaml_exportdir = f"{yaml_root}/{subject_id}"
@@ -171,7 +171,8 @@ np.savez(join(exportdir, f"{subject_id}_resp_stats.npz"), **resp_stats)
 
 # %%
 # Get indices of top 5 most reliable neurons
-topk_reliable_chan_idx = np.argsort(data_dict['reliability'])[-5:][::-1]
+# topk_reliable_chan_idx = np.argsort(data_dict['reliability'])[-5:][::-1]
+topk_reliable_chan_idx = [331, 355, 9, 151, 79]
 topk_reliability = data_dict['reliability'][topk_reliable_chan_idx]
 print("Most reliable channels")
 print(topk_reliability)
@@ -219,7 +220,7 @@ for modelname in [
         single_chan_result_df = construct_result_df_masked(D2_per_unit_train_dict, D2_per_unit_test_dict, mask=unit_id)
         single_chan_result_df = format_result_df_tuple_index(single_chan_result_df, )
         # Filter out 'srp' dimension reduction and get the row with the best test score
-        print("Best config for PCA")
+        print(f"Best config for PCA | {modelname} | {subject_id} | Ch{unit_id:02d}")
         best_row = single_chan_result_df.query("dimred == 'pca750'").sort_values('test_score', ascending=False).iloc[0]
         print(f"Best config - layer: {abbrev_map(best_row['layer'])} ({best_row['layer']}), dimred: {best_row['dimred']}, regressor: {best_row['regressor']}, "+\
               f"train_score: {best_row['train_score']:.3f}, test_score: {best_row['test_score']:.3f}")
