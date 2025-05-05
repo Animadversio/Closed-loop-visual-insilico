@@ -171,8 +171,8 @@ np.savez(join(exportdir, f"{subject_id}_resp_stats.npz"), **resp_stats)
 
 # %%
 # Get indices of top 5 most reliable neurons
-# topk_reliable_chan_idx = np.argsort(data_dict['reliability'])[-5:][::-1]
 topk_reliable_chan_idx = [331, 355, 9, 151, 79]
+# topk_reliable_chan_idx = np.argsort(data_dict['reliability'])[-5:][::-1]
 topk_reliability = data_dict['reliability'][topk_reliable_chan_idx]
 print("Most reliable channels")
 print(topk_reliability)
