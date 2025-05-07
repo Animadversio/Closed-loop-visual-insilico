@@ -131,6 +131,8 @@ yaml_root = "/n/holylabs/LABS/alvarez_lab/Everyone/Accentuate_VVS/accentuation_c
 # subject_id, h5_filename = ("red_20250428-20250430", "red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
 subject_id, h5_filename = ("paul_20250428-20250430", "paul_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5")
 subject_id, h5_filename = ("venus_250426-250429", "venus_250426-250429_vvs-encodingstimuli_z1_rw80-250.h5")
+subject_id, h5_filename = ("three0_250426-250501", "three0_250426-250501_vvs-encodingstimuli_z1_rw80-250.h5")
+# subject_id, h5_filename = ("leap_250426-250501", "leap_250426-250501_vvs-encodingstimuli_z1_rw80-250.h5")
 
 raw_model_output_dir = join(model_root, subject_id, "model_outputs_pca4all")
 yaml_exportdir = f"{yaml_root}/{subject_id}"
@@ -171,7 +173,8 @@ np.savez(join(exportdir, f"{subject_id}_resp_stats.npz"), **resp_stats)
 
 # %%
 # Get indices of top 5 most reliable neurons
-topk_reliable_chan_idx = [331, 355, 9, 151, 79]
+topk_reliable_chan_idx = [342, 282, 306, 286, 81]
+topk_reliable_chan_idx = [204, 56, 168, 120, 74]
 # topk_reliable_chan_idx = np.argsort(data_dict['reliability'])[-5:][::-1]
 topk_reliability = data_dict['reliability'][topk_reliable_chan_idx]
 print("Most reliable channels")
