@@ -69,12 +69,12 @@ def extract_neural_data_dict_2025apr(data):
     data_dict = {}
     data_dict['resp_mat'] = data['repavg']["response_peak"]
     data_dict['resp_temp_mat'] = data['repavg']["response_temporal"]
+    data_dict["stimulus_names"] = data['repavg']['stimulus_name']
     data_dict['reliability'] = data['neuron_metadata']["reliability"]
     data_dict['ncsnr'] = data['neuron_metadata']["ncsnr"]
     data_dict['brain_area'] = data['neuron_metadata']["brain_area"]
     data_dict['stim_pos'] = data['stimulus_meta']['xy_deg']
     data_dict['stim_size'] = data["stimulus_meta"]["size_px"]
-    data_dict["stimulus_names"] = data['repavg']['stimulus_name']
     return data_dict
 
 def parse_image_fullpaths(stimulus_names, stimroots, arbitrary_format=False,
