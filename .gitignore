@@ -2,3 +2,5 @@
 *.csv
 *.pyc
 figures/*
+
+*/__pycache__/*
