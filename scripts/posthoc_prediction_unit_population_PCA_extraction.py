@@ -407,6 +407,9 @@ for subject_id, filename in [
                             "readout_bias": readout_bias,
                             "cosine_sims": cosine_sims, 
                             "PCA_norm": PCA_norm}
-        pkl.dump(stats_dict, 
-                open(join(posthoc_PCA_dir, 
-                        f"posthoc_prediction_PCA_pop_unit_{subject_id}_unit{unit_id}_{model_name}.pkl"), "wb"))
+        pkl.dump(stats_dict, open(join(posthoc_PCA_dir, f"posthoc_prediction_PCA_pop_unit_{subject_id}_unit{unit_id}_{model_name}.pkl"), "wb"))
+        print(f"Saved to {join(posthoc_PCA_dir, f'posthoc_prediction_PCA_pop_unit_{subject_id}_unit{unit_id}_{model_name}.pkl')} completed!")
+
+        
+        
+
