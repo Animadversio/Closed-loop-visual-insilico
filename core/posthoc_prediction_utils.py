@@ -314,7 +314,7 @@ def parse_accentuated_filename(filename):
     else:
         return None
 
-def parse_accentuated_filenames_to_df(filenames):
+def parse_accentuated_filenames_to_df(filenames, include_parse_fail=False):
     """
     Parse a list of accentuated image filenames and return as a DataFrame.
     
@@ -329,6 +329,17 @@ def parse_accentuated_filenames_to_df(filenames):
         parsed = parse_accentuated_filename(filename)
         if parsed:
             parsed_data.append(parsed)
+        else:
+            # this is critical since some files are not accentuated, if we don't include them the index will not match the order of response! @binxu Oct. 16th
+            if include_parse_fail:
+                parsed_data.append({
+                    'filepath': filename,
+                    'model_name': pd.NA,
+                    'unit_id': pd.NA,
+                    'img_id': pd.NA,
+                    'level': pd.NA,
+                    'score': pd.NA,
+                })
     
     if parsed_data:
         return pd.DataFrame(parsed_data)
