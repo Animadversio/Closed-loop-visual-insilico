@@ -121,7 +121,7 @@ def build_alexnet_brainscore(identifier: str = "training_seed_01",
         key = f"models/model_weights/{identifier}.pth"
         download_from_s3(bucket="brainscorevariability", key=key, 
                         local_path=Path(local_weights_path), version_id=None)
-    model_weights = torch.load(local_weights_path, map_location='cpu') 
+    model_weights = torch.load(local_weights_path, map_location='cpu', weights_only=False) 
     model.load_state_dict(model_weights)
     model.eval()
     model.requires_grad_(False)
