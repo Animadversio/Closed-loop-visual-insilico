@@ -215,7 +215,7 @@ plt.close("all")
 # # ### Scratch
 
 # ckpt_dir = '/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/model_backbones'
-# data = torch.load(join(ckpt_dir, 'CLIPAG_ViTB32.pt'), map_location='cpu')
+# data = torch.load(join(ckpt_dir, 'CLIPAG_ViTB32.pt'), map_location='cpu', weights_only=False)
 # data = data['state_dict']
 # data = {k.replace('module.', ''): v for k, v in data.items()}
 

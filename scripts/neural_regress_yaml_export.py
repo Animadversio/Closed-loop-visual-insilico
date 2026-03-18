@@ -212,8 +212,8 @@ for modelname in [
     # red_20250428-20240429_resnet50_robust_sweep_regressors_layers_Xtfmer_RidgeCV.pkl
     readout_path = join(raw_model_output_dir, f"{subject_id}_{modelname}_sweep_regressors_layers_fitmodels_RidgeCV.pth")
     meta_path = join(raw_model_output_dir, f"{subject_id}_{modelname}_sweep_regressors_layers_pred_meta.pkl")
-    fit_models_lyrswp_RidgeCV = th.load(readout_path)
-    # Xtfmer_lyrswp_RidgeCV = th.load(Xtransform_path)
+    fit_models_lyrswp_RidgeCV = th.load(readout_path, weights_only=False)
+    # Xtfmer_lyrswp_RidgeCV = th.load(Xtransform_path, weights_only=False)
     Xtfmer_lyrswp_RidgeCV = pkl.load(open(Xtransform_path, "rb"))
     pred_data = pkl.load(open(meta_path, "rb"))
     pred_dict = pred_data["pred_dict"]
