@@ -55,8 +55,8 @@ def construct_predictor_from_config(acc_config, device="cuda"):
     fetcher = featureFetcher(model, input_size=(3, 224, 224), print_module=False)
     fetcher.record(layer_name, ingraph=True, store_device=device)
     # Load readout layer and PCA transform
-    readout = th.load(readout_path).to(device)
-    Xtransform = th.load(xtransform_path).to(device)
+    readout = th.load(readout_path, weights_only=False).to(device)
+    Xtransform = th.load(xtransform_path, weights_only=False).to(device)
     def predict_population_response(images):
         """Predict neural population responses for input images.
         

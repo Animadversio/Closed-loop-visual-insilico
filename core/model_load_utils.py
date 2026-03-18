@@ -8,7 +8,7 @@ def load_model_transform(modelname, device="cuda"):
     # Prepare model and transforms
     if modelname == "resnet50_robust":
         model = resnet50(pretrained=False)
-        model.load_state_dict(th.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/model_backbones/imagenet_linf_8_pure.pt"))
+        model.load_state_dict(th.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/model_backbones/imagenet_linf_8_pure.pt", weights_only=False))
         transforms_pipeline = T.Compose([
             T.ToTensor(),
             T.Resize((224, 224)),
@@ -38,7 +38,7 @@ def load_model_transform(modelname, device="cuda"):
         import open_clip
         from os.path import join
         ckpt_dir = '/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/VVS_Accentuation/model_backbones'
-        data = torch.load(join(ckpt_dir, 'CLIPAG_ViTB32.pt'), map_location='cpu')
+        data = torch.load(join(ckpt_dir, 'CLIPAG_ViTB32.pt'), map_location='cpu', weights_only=False)
         data = data['state_dict']
         data = {k.replace('module.', ''): v for k, v in data.items()}
         model_clip, _, transforms_pipeline = open_clip.create_model_and_transforms('ViT-B/32',device="cuda")

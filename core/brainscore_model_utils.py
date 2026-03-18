@@ -83,7 +83,7 @@ def build_ReAlnet_model(identifier: str = "ReAlnet01",
         download_from_s3(bucket="brainscore-storage", key=key, 
                          local_path=Path(local_weights_path), version_id=version_id)
     
-    weights_data = torch.load(local_weights_path, map_location="cpu")
+    weights_data = torch.load(local_weights_path, map_location="cpu", weights_only=False)
     new_state_dict = {}
     for key, val in weights_data.items():
         # remove "module." (if it exists) from the key

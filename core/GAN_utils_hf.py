@@ -56,7 +56,7 @@ def load_statedict_from_online(name="fc6"):
         print(f"downloading weights of `upconvGAN_{name}.pt` to {filepath}")
         download_file(model_urls[name], filepath)
 
-    SD = torch.load(filepath)
+    SD = torch.load(filepath, weights_only=False)
     return SD
 
 
