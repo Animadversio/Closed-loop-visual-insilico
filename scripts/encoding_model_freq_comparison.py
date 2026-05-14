@@ -269,49 +269,54 @@ def fig_acc_freq_foldchange(subject_id, model_list, figdir):
     db = pd.read_pickle(acc_spectra_pkl(subject_id))
     n = len(model_list)
     freqs = np.arange(len(db["spectrum_foldchange"].iloc[0]))
+    # skip freq=0 for log-x axis
+    freqs_nz = freqs[1:]
     cmap = plt.cm.RdBu_r
-
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4.5), sharey=True)
-    if n == 1:
-        axes = [axes]
-
     level_min = db["level"].min()
     level_max = db["level"].max()
-
-    for ax, model in zip(axes, model_list):
-        df_m = db[db["model_name"] == model]
-        for lv_val in sorted(df_m["level"].unique()):
-            rows = df_m[df_m["level"] == lv_val]
-            specs = np.stack(rows["spectrum_foldchange"].values)
-            mean_fc = specs.mean(axis=0)
-            sem_fc  = specs.std(axis=0) / max(np.sqrt(len(specs)), 1)
-            lv_norm = (lv_val - level_min) / (level_max - level_min)
-            c = cmap(lv_norm)
-            ax.plot(freqs, mean_fc, color=c, lw=1.2, alpha=0.45)
-            ax.fill_between(freqs, mean_fc - sem_fc, mean_fc + sem_fc,
-                            color=c, alpha=0.06)
-
-        ax.axhline(1.0, color="k", lw=1.0, ls="--")
-        ax.set_xlabel("Spatial frequency (cycles/image)")
-        if ax is axes[0]:
-            ax.set_ylabel("Spectral fold-change")
-        ax.set_title(model_label(model), fontsize=11, fontweight="bold",
-                     color=model_color(model_list, model))
-        ax.set_yscale("log")
-        ax.grid(True, alpha=0.2)
-
-    fig.suptitle(f"{subject_id}\nAccentuated image spectral fold-change"
-                 " (mean ± SEM across units & seeds)", fontsize=10)
-    fig.tight_layout()
-    # Add colorbar in its own axis to the right, after tight_layout
-    fig.subplots_adjust(right=0.88)
-    cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.70])
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(level_min, level_max))
-    fig.colorbar(sm, cax=cbar_ax, label="Accentuation level (normalized score)")
     tag = _comparison_tag(model_list)
-    saveallforms(figdir, f"{subject_id}_acc_freq_foldchange_{tag}", figh=fig)
-    plt.close(fig)
-    print("Saved: acc freq foldchange")
+
+    for xscale in ("linear", "log"):
+        fig, axes = plt.subplots(1, n, figsize=(6 * n, 4.5), sharey=True)
+        if n == 1:
+            axes = [axes]
+
+        for ax, model in zip(axes, model_list):
+            df_m = db[db["model_name"] == model]
+            for lv_val in sorted(df_m["level"].unique()):
+                rows = df_m[df_m["level"] == lv_val]
+                specs = np.stack(rows["spectrum_foldchange"].values)
+                mean_fc = specs.mean(axis=0)
+                sem_fc  = specs.std(axis=0) / max(np.sqrt(len(specs)), 1)
+                lv_norm = (lv_val - level_min) / (level_max - level_min)
+                c = cmap(lv_norm)
+                x = freqs_nz if xscale == "log" else freqs
+                y      = mean_fc[1:] if xscale == "log" else mean_fc
+                y_lo   = (mean_fc - sem_fc)[1:] if xscale == "log" else (mean_fc - sem_fc)
+                y_hi   = (mean_fc + sem_fc)[1:] if xscale == "log" else (mean_fc + sem_fc)
+                ax.plot(x, y, color=c, lw=1.2, alpha=0.45)
+                ax.fill_between(x, y_lo, y_hi, color=c, alpha=0.06)
+
+            ax.axhline(1.0, color="k", lw=1.0, ls="--")
+            ax.set_xscale(xscale)
+            ax.set_xlabel("Spatial frequency (cycles/image)")
+            if ax is axes[0]:
+                ax.set_ylabel("Spectral fold-change")
+            ax.set_title(model_label(model), fontsize=11, fontweight="bold",
+                         color=model_color(model_list, model))
+            ax.set_yscale("log")
+            ax.grid(True, alpha=0.2, which="both")
+
+        fig.suptitle(f"{subject_id}\nAccentuated image spectral fold-change"
+                     f" (mean ± SEM across units & seeds)  [{xscale} x]", fontsize=10)
+        fig.tight_layout()
+        fig.subplots_adjust(right=0.88)
+        cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.70])
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(level_min, level_max))
+        fig.colorbar(sm, cax=cbar_ax, label="Accentuation level (normalized score)")
+        saveallforms(figdir, f"{subject_id}_acc_freq_foldchange_{xscale}x_{tag}", figh=fig)
+        plt.close(fig)
+        print(f"Saved: acc freq foldchange [{xscale} x]")
 
 
 # ── Main ────────────────────────────────────────────────────────────────────

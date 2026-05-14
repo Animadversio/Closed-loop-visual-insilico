@@ -30,6 +30,73 @@ $STORE/step1_results/
 
 Also see `$STORE/Data/` and `$STORE/Datasets/NSD_N3/` for additional neural/behavioral data.
 
+### Encoding Session Neural Responses (for training encoding models)
+
+```
+/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Ephys_Data/
+  red_20250428-20250430_vvs-encodingstimuli_z1_rw100-400.h5   # 153 MB
+```
+
+HDF5 structure:
+- `repavg/response_peak`      — (969, 64) float64, stimulus-averaged peak responses
+- `repavg/response_temporal`  — (60, 969, 64), temporal profile
+- `repavg/stimulus_name`      — stimulus filenames (row index for joining)
+- `trials/response_peak`      — (8241, 64) float32, trial-by-trial responses
+- `neuron_metadata/reliability`, `ncsnr`, `brain_area` — per-unit quality metrics
+- `stimulus_meta/xy_deg`, `size_px` — stimulus position and size
+
+Loading:
+```python
+from core.data_utils import load_from_hdf5, extract_neural_data_dict_2025apr
+data = load_from_hdf5("<path>.h5")
+data_dict = extract_neural_data_dict_2025apr(data)
+# data_dict['resp_mat']       → (969, 64) peak responses
+# data_dict['stimulus_names'] → stimulus filenames (join key)
+# data_dict['image_fps']      → full paths to stimulus images
+```
+
+Model predictions for same stimuli (post-hoc, all models × units):
+```
+/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Encoding_models/
+  red_20250428-20250430/
+  ├── posthoc_model_predict/
+  │   ├── encoding_stim_info_w_pred_resp_{subject}.pkl      # 969×58 — NSD stims + pred_resp all models×units
+  │   ├── accentuated_stim_info_w_pred_resp_{subject}.pkl   # 5500×N — accentuated stims + pred_resp
+  │   └── accentuated_stim_info_{subject}.pkl/.csv          # 5500×6 — metadata only (no pred_resp)
+  │
+  ├── posthoc_model_predict_PCA_popul_unit/
+  │   ├── df_accentuated_{subject}.pkl                      # 5500-row metadata df (shared)
+  │   ├── posthoc_prediction_PCA_pop_unit_{subject}_unit{u}_{model}.pkl
+  │   │   # Per unit×model pkl (5 units × 10 models = 50 files); keys:
+  │   │   #   PCA_resp        (5500, 750)  — PCA-projected activations for accentuated imgs
+  │   │   #   population_resp (5500, 64)   — full population response
+  │   │   #   target_unit_resp(5500, 1)    — predicted response for target unit
+  │   │   #   readout_vec     (750,)       — encoding model weight in PCA space
+  │   │   #   readout_bias    scalar
+  │   │   #   cosine_sims     (5500,)
+  │   │   #   df              (5500, 8)    — model/unit/img_id/level metadata
+  │   └── posthoc_prediction_NSDencimg_PCA_pop_unit_{subject}_unit{u}_{model}.pkl
+  │       # Same structure but for NSD encoding images (969 rows) — for encoding scatter plots
+  │
+  ├── model_outputs_pca4all/
+  │   └── {subject}_{model}_layer_sweep_synopisis*.{png,pdf}  # Layer sweep synopsis figures
+  │
+  └── encoding_gradient_map_fourier_spectra/
+      ├── {subject}_unit_{u}_model_{model}_grad_maps.png
+      └── {subject}_unit_{u}_model_{model}_grad_maps_freq_profiles.pkl
+          # keys: profiles (10, 158), freqs (158,), grad_img (10, 3, 224, 224)
+          # Computed on 224×224 RGB images; x-axis = cycles/224px image
+```
+
+Accentuated image frequency spectra (1024×1024 PNG inputs):
+```
+  red_20250428-20250430/posthoc_model_predict/accentuated_images_fourier_spectra/
+    accentuated_images_fourier_spectra_db.pkl   # DataFrame: model_name, unit_id, img_id,
+                                                #   level, score, filepath,
+                                                #   spectrum (158,), spectrum_foldchange (158,)
+    # x-axis = cycles/1024px image (not same scale as gradient map profiles above)
+```
+
 ---
 
 ## Image Stimuli

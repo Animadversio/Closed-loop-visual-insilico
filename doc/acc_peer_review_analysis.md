@@ -94,5 +94,85 @@ Sanity checked: `level` and `score` columns must match between tables.
   red_20250504-20250512_202505_accentuated_df.pkl
 
 # Output figures
-/n/home12/binxuwang/Github/Closed-loop-visual-insilico/export_dir/peer_review_export/
+/n/home12/binxuwang/Github/Closed-loop-visual-insilico/figures/peer_review_export/
 ```
+
+## Image Sequence Loading & Visualisation
+
+Library: `core/accentuated_image_utils.py`
+
+### Loading a sequence
+
+```python
+import pickle as pkl
+from core.accentuated_image_utils import load_accentuated_sequence
+
+df = pkl.load(open(
+    "/n/holylabs/LABS/alvarez_lab/Lab/VVS_Accentuation/Encoding_models/"
+    "red_20250428-20250430/posthoc_model_predict/"
+    "accentuated_stim_info_w_pred_resp_red_20250428-20250430.pkl", "rb"))
+
+# All 11 levels
+images, levels, df_seq = load_accentuated_sequence(
+    df, model_name="resnet50_robust", unit_id=15, img_id=0)
+
+# Evenly subsample to N levels
+images, levels, df_seq = load_accentuated_sequence(
+    df, "resnet50_robust", unit_id=15, img_id=0, n_levels=5)
+
+# Specific level indices (e.g. -0.25, 0.10, 0.80, 1.50 → indices 0,2,6,10)
+images, levels, df_seq = load_accentuated_sequence(
+    df, "resnet50_robust", unit_id=15, img_id=0, level_indices=[0, 2, 6, 10])
+```
+
+`df_seq` keeps all columns from the original dataframe (score, pred_resp_*, etc.)
+for the selected levels.
+
+### Plotting
+
+```python
+from core.accentuated_image_utils import plot_level_row, plot_level_grid, show_sequence
+
+# Single row — one trajectory
+fig = plot_level_row(images, levels, title="resnet50_robust | U15 img0")
+
+# One-liner convenience
+fig = show_sequence(df, "resnet50_robust", unit_id=15, img_id=0, n_levels=9)
+
+# Grid: rows = (model × img_id), cols = levels
+fig = plot_level_grid(
+    df,
+    model_names=["resnet50_robust", "resnet50"],
+    unit_id=15,
+    img_ids=[0, 1, 2],
+    n_levels=9,           # or level_indices=[0,2,6,10]
+)
+```
+
+### Recommended level subsets
+
+| Purpose | level_indices | Normalized levels |
+|---------|--------------|-------------------|
+| Sparse 4-point | `[0, 2, 6, 10]` | −0.25, 0.10, 0.80, 1.50 |
+| Mid-range 5-point | `[0, 2, 5, 8, 10]` | −0.25, 0.10, 0.625, 1.15, 1.50 |
+| All 11 | *(default)* | −0.25 → +1.50 |
+
+---
+
+## Level Normalization
+
+Accentuation levels are normalized to the natural image response distribution per unit:
+
+- **Level 0** = 1st percentile of natural image responses  
+- **Level 1** = 99th percentile of natural image responses  
+- **Sweep**: −0.25 → +1.5 in 11 uniform steps (step = 0.175)
+
+So every trajectory spans from slightly below the natural distribution (−0.25)
+to 50% above the 99th percentile (+1.5), covering both suppression and strong drive.
+
+Back-calculated normalization constants (for red_20250428-20250430):
+  p99 − p1 ≈ 4.62 raw response units  
+  p1 ≈ −0.69
+
+Raw level values (same for all models/units/img_ids):
+  [-1.85, -1.04, -0.23, 0.58, 1.39, 2.20, 3.01, 3.82, 4.63, 5.44, 6.24]

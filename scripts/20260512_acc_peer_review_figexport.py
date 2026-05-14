@@ -44,7 +44,7 @@ FIGDIR       = "/n/home12/binxuwang/Github/Closed-loop-visual-insilico/figures/p
 
 ACCENTUATOR_LIST = ["resnet50_robust", "resnet50"]
 REVIEWER_LIST    = ["resnet50_robust", "resnet50"]
-UNIT_IDS         = [0]    # units to generate figures for
+UNIT_IDS         = [0, 2, 9, 15, 19]
 
 os.makedirs(FIGDIR, exist_ok=True)
 
